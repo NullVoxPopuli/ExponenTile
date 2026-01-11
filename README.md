@@ -6,10 +6,9 @@ The ember version lives at `./ember-tile-game`, and has been ported by AI, start
 ```bash
 pnpm dlx ember-cli@latest new ember-tile-game \
   --blueprint @ember/app-blueprint@alpha \
-  --pnpm \
   --typescript \ 
+  --pnpm \
   --no-compat \
   --skip-git \
-  --skip-install \
   --no-ember-data --no-warp-drive
 ```
