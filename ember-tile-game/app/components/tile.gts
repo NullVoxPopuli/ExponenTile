@@ -1,4 +1,5 @@
 import Component from '@glimmer/component';
+import { tracked } from '@glimmer/tracking';
 import { on } from '@ember/modifier';
 import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
@@ -9,6 +10,8 @@ import {
   type Position,
   type Tile,
 } from '../game/board';
+import bumpOnChange from '../modifiers/bump-on-change';
+import flip from '../modifiers/flip';
 import { getTileDisplayValue } from '../utils/sharing';
 
 import type GameService from '../services/game';
@@ -17,10 +20,15 @@ type Args = {
   tile: Tile;
   position: Position;
   selected: boolean;
+  durationMs?: number;
 };
 
 export default class TileComponent extends Component<Args> {
   @service declare game: GameService;
+
+  @tracked private dragX = 0;
+  @tracked private dragY = 0;
+  @tracked private isDragging = false;
 
   private pointerStart:
     | {
@@ -35,6 +43,18 @@ export default class TileComponent extends Component<Args> {
     const textColor = getContrastTextColor(color);
 
     return `background:${color};color:${textColor};`;
+  }
+
+  get wrapperStyle(): string {
+    const duration = this.isDragging ? 0 : (this.args.durationMs ?? 0);
+    const x = this.dragX;
+    const y = this.dragY;
+
+    return `--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
+  }
+
+  get wrapperClass(): string {
+    return this.isDragging ? 'tile-wrap tile-wrap-dragging' : 'tile-wrap';
   }
 
   get classes(): string {
@@ -52,11 +72,44 @@ export default class TileComponent extends Component<Args> {
 
   @action
   pointerDown(event: PointerEvent): void {
+    event.preventDefault();
+
+    this.isDragging = true;
+
     this.pointerStart = {
       id: event.pointerId,
       x: event.clientX,
       y: event.clientY,
     };
+
+    (event.currentTarget as HTMLElement | null)?.setPointerCapture(
+      event.pointerId
+    );
+  }
+
+  @action
+  pointerMove(event: PointerEvent): void {
+    const start = this.pointerStart;
+
+    if (!start || start.id !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+
+    const deltaX = event.clientX - start.x;
+    const deltaY = event.clientY - start.y;
+
+    // Only drag in one axis (feels like the original).
+    if (Math.abs(deltaX) > Math.abs(deltaY)) {
+      this.dragX = clamp(deltaX, -getTileStepPx(), getTileStepPx());
+      this.dragY = 0;
+
+      return;
+    }
+
+    this.dragX = 0;
+    this.dragY = clamp(deltaY, -getTileStepPx(), getTileStepPx());
   }
 
   @action
@@ -76,15 +129,23 @@ export default class TileComponent extends Component<Args> {
       // treat as click
       this.click();
     } else {
+      this.dragX = 0;
+      this.dragY = 0;
       this.game.swipeFrom(this.args.position, deltaX, deltaY);
     }
 
     this.pointerStart = undefined;
+    this.isDragging = false;
+    this.dragX = 0;
+    this.dragY = 0;
   }
 
   @action
   pointerCancel(): void {
     this.pointerStart = undefined;
+    this.isDragging = false;
+    this.dragX = 0;
+    this.dragY = 0;
   }
 
   @action
@@ -98,16 +159,43 @@ export default class TileComponent extends Component<Args> {
   <template>
     {{! template-lint-disable no-pointer-down-event-binding }}
     <div
-      role="button"
-      tabindex="0"
-      class={{this.classes}}
-      style={{this.style}}
-      {{on "keydown" this.keydown}}
-      {{on "pointerdown" this.pointerDown}}
-      {{on "pointerup" this.pointerUp}}
-      {{on "pointercancel" this.pointerCancel}}
+      class={{this.wrapperClass}}
+      style={{this.wrapperStyle}}
+      {{flip @position.x @position.y}}
     >
-      {{this.displayValue}}
+      <div
+        role="button"
+        tabindex="0"
+        class={{this.classes}}
+        style={{this.style}}
+        {{bumpOnChange @tile.value}}
+        {{on "keydown" this.keydown}}
+        {{on "pointerdown" this.pointerDown}}
+        {{on "pointermove" this.pointerMove}}
+        {{on "pointerup" this.pointerUp}}
+        {{on "pointercancel" this.pointerCancel}}
+      >
+        {{this.displayValue}}
+      </div>
     </div>
   </template>
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
+}
+
+function getTileStepPx(): number {
+  const tileSize = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--tile-size')
+  );
+  const tileGap = parseFloat(
+    getComputedStyle(document.documentElement).getPropertyValue('--tile-gap')
+  );
+
+  // Fallbacks if CSS vars are missing.
+  const safeTileSize = Number.isFinite(tileSize) && tileSize > 0 ? tileSize : 56;
+  const safeTileGap = Number.isFinite(tileGap) && tileGap >= 0 ? tileGap : 6;
+
+  return safeTileSize + safeTileGap;
 }

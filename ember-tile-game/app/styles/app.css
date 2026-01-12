@@ -118,13 +118,29 @@ a {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  touch-action: manipulation;
+  touch-action: none;
+}
+
+.tile-wrap {
+  width: var(--tile-size);
+  height: var(--tile-size);
+  will-change: transform;
+  transform: translate(var(--flip-x, 0), var(--flip-y, 0))
+    translate(var(--drag-x, 0), var(--drag-y, 0));
+  transition: transform var(--move-duration, 120ms) ease;
+}
+
+.tile-wrap-dragging {
+  position: relative;
+  z-index: 5;
 }
 
 .tile {
   display: grid;
   place-items: center;
-  border-radius: 12px;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
   font-weight: 800;
   user-select: none;
   cursor: pointer;
@@ -133,6 +149,7 @@ a {
     transform 120ms ease,
     box-shadow 200ms ease;
   outline: none;
+  touch-action: none;
 }
 
 .tile:hover {

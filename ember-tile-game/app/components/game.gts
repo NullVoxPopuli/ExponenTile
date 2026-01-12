@@ -16,8 +16,6 @@ import type SettingsService from '../services/settings';
 
 type RowCell = { tile: Tile; position: Position; selected: boolean };
 
-type Row = RowCell[];
-
 function tileAt(board: Board, { x, y }: Position): Tile {
   const column = board[x];
 
@@ -51,20 +49,18 @@ export default class GameComponent extends Component {
   }
 
   @cached
-  get rows(): Row[] {
+  get cells(): RowCell[] {
     const board = this.game.board;
     const size = board.length;
     const selectedFrom = this.game.selectedFrom;
 
-    const rows: Row[] = [];
+    const cells: RowCell[] = [];
 
     for (let y = 0; y < size; y++) {
-      const row: Row = [];
-
       for (let x = 0; x < size; x++) {
         const position = { x, y };
 
-        row.push({
+        cells.push({
           tile: tileAt(board, position),
           position,
           selected: Boolean(
@@ -72,11 +68,9 @@ export default class GameComponent extends Component {
           ),
         });
       }
-
-      rows.push(row);
     }
 
-    return rows;
+    return cells;
   }
 
   get displayHighscore(): number {
@@ -144,14 +138,13 @@ export default class GameComponent extends Component {
         {{/if}}
 
         <div class="board" style={{this.boardStyle}}>
-          {{#each this.rows as |row|}}
-            {{#each row as |cell|}}
-              <TileComponent
-                @tile={{cell.tile}}
-                @position={{cell.position}}
-                @selected={{cell.selected}}
-              />
-            {{/each}}
+          {{#each this.cells key="tile.id" as |cell|}}
+            <TileComponent
+              @tile={{cell.tile}}
+              @position={{cell.position}}
+              @selected={{cell.selected}}
+              @durationMs={{this.animationDurationMs}}
+            />
           {{/each}}
         </div>
 
@@ -234,6 +227,10 @@ export default class GameComponent extends Component {
   get boardStyle(): string {
     const size = this.game.board.length;
 
-    return `--board-size:${size};`;
+    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;`;
+  }
+
+  get animationDurationMs(): number {
+    return Math.max(0, Math.round(this.settings.animationDurationSeconds * 1000));
   }
 }
