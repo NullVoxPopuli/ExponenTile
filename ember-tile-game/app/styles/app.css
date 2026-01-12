@@ -1,1 +1,302 @@
-/* Ember supports plain CSS out of the box. More info: https://cli.emberjs.com/release/advanced-use/stylesheets/ */
+/* Ember supports plain CSS out of the box. */
+
+:root {
+  color-scheme: light dark;
+
+  --bg: #0f172a;
+  --fg: #e5e7eb;
+  --panel: rgb(255 255 255 / 6%);
+  --panel-strong: rgb(255 255 255 / 10%);
+  --border: rgb(255 255 255 / 16%);
+  --shadow: 0 10px 30px rgb(0 0 0 / 45%);
+  --radius: 14px;
+  --gap: 10px;
+  --tile-size: 56px;
+  --tile-gap: 6px;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(1200px 800px at 20% 10%, #1f2937, var(--bg));
+  color: var(--fg);
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    'Segoe UI',
+    Roboto,
+    Helvetica,
+    Arial,
+    'Apple Color Emoji',
+    'Segoe UI Emoji';
+}
+
+a {
+  color: inherit;
+}
+
+.page {
+  min-height: 100vh;
+  padding: 16px;
+}
+
+.page-center {
+  display: grid;
+  place-items: center;
+}
+
+.app-shell {
+  display: grid;
+  justify-items: center;
+}
+
+.game-shell {
+  width: min(900px, 100%);
+  display: grid;
+  gap: 14px;
+}
+
+.hud {
+  padding: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.hud-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.hud-scores {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.hud-score {
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: var(--panel-strong);
+  border: 1px solid var(--border);
+  min-width: 120px;
+}
+
+.hud-label {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.hud-value {
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.hud-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.board {
+  display: grid;
+  justify-content: center;
+  grid-template-columns: repeat(var(--board-size), var(--tile-size));
+  grid-auto-rows: var(--tile-size);
+  gap: var(--tile-gap);
+  padding: 14px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  touch-action: manipulation;
+}
+
+.tile {
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  font-weight: 800;
+  user-select: none;
+  cursor: pointer;
+  font-size: 18px;
+  transition:
+    transform 120ms ease,
+    box-shadow 200ms ease;
+  outline: none;
+}
+
+.tile:hover {
+  transform: scale(1.06);
+}
+
+.tile:active {
+  transform: scale(0.98);
+}
+
+.tile-selected {
+  box-shadow: 0 0 0 3px #facc15;
+}
+
+.btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: var(--panel-strong);
+  color: var(--fg);
+  padding: 8px 12px;
+  border-radius: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.btn[disabled] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-full {
+  width: 100%;
+}
+
+.btn-link {
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn {
+  appearance: none;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  padding: 8px;
+  border-radius: 12px;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.modal-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgb(0 0 0 / 55%);
+  border: none;
+}
+
+.modal,
+.sheet {
+  position: relative;
+  width: min(540px, calc(100% - 32px));
+  background: rgb(10 10 14 / 92%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+}
+
+.modal-title {
+  margin: 0 0 8px;
+}
+
+.modal-actions {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.sheet {
+  place-self: end center;
+  margin-bottom: 16px;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.sheet-title {
+  margin: 0;
+}
+
+.sheet-section {
+  margin: 12px 0;
+}
+
+.sheet-label {
+  margin: 0 0 8px;
+  font-size: 14px;
+}
+
+.radio-list {
+  display: grid;
+  gap: 6px;
+}
+
+.radio {
+  text-transform: capitalize;
+  text-align: left;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--fg);
+  border-radius: 12px;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.radio-selected {
+  background: rgb(59 130 246 / 20%);
+  border-color: rgb(59 130 246 / 70%);
+}
+
+.tutorial img {
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.tutorial-text {
+  margin: 12px 0;
+}
+
+.share {
+  display: grid;
+  gap: 6px;
+}
+
+.share-status {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+.privacy {
+  width: min(740px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+
+.privacy a {
+  text-decoration: underline;
+}

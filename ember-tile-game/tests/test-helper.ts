@@ -1,10 +1,10 @@
+import { setApplication } from '@ember/test-helpers';
+import * as QUnit from 'qunit';
+import { setup } from 'qunit-dom';
+import { setupEmberOnerrorValidation, start as qunitStart } from 'ember-qunit';
 
 import Application from 'ember-tile-game/app';
 import config, { enterTestMode } from 'ember-tile-game/config/environment';
-import * as QUnit from 'qunit';
-import { setApplication } from '@ember/test-helpers';
-import { setup } from 'qunit-dom';
-import { start as qunitStart, setupEmberOnerrorValidation } from 'ember-qunit';
 
 export function start() {
   enterTestMode();

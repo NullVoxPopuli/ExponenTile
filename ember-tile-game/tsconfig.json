@@ -3,7 +3,11 @@
   "include": ["app", "tests", "types"],
   "compilerOptions": {
     "allowJs": true,
+    "lib": ["DOM", "DOM.Iterable", "ES2022"],
     "paths": {
+      "#app/*": ["./app/*"],
+      "#components/*": ["./app/components/*"],
+      "#config": ["./app/config/environment"],
       "ember-tile-game/tests/*": ["./tests/*"],
       "ember-tile-game/*": ["./app/*"],
       "*": ["./types/*"]

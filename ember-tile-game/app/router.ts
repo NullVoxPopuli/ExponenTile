@@ -1,4 +1,5 @@
 import EmberRouter from '@embroider/router';
+
 import config from 'ember-tile-game/config/environment';
 
 export default class Router extends EmberRouter {
@@ -7,5 +8,6 @@ export default class Router extends EmberRouter {
 }
 
 Router.map(function () {
-  // Add route declarations here
+  this.route('shared');
+  this.route('privacy');
 });
