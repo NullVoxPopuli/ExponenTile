@@ -17,9 +17,8 @@ export default modifier((element: HTMLElement) => {
     return;
   }
 
-  // Start slightly above and fade in.
+  // Start slightly above and slide in.
   element.style.setProperty('--spawn-y', '-80px');
-  element.style.opacity = '0';
 
   // Force initial style application.
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
@@ -27,6 +26,5 @@ export default modifier((element: HTMLElement) => {
 
   requestAnimationFrame(() => {
     element.style.setProperty('--spawn-y', '0px');
-    element.style.opacity = '1';
   });
 });

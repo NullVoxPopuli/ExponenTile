@@ -8,7 +8,9 @@ import {
   isAdjacent,
   isGameOver,
   type Position,
+  positionToNumber,
   swapTile,
+  type Tile,
 } from '../game/board';
 import { boardContains2048Tile } from '../utils/sharing';
 import { sleep } from '../utils/sleep';
@@ -43,8 +45,12 @@ export default class GameService extends Service {
 
   @tracked invalidTileIds: number[] = [];
 
+  @tracked mergePhase: 'none' | 'highlight' | 'collapse' = 'none';
+
   private animationToken = 0;
   private invalidToken = 0;
+
+  private mergeTargetsCache = new WeakMap<Board, Set<number>>();
 
   constructor(owner: unknown) {
     super(owner as never);
@@ -71,6 +77,7 @@ export default class GameService extends Service {
 
     this.animationToken++;
     this.animating = false;
+    this.mergePhase = 'none';
     this.gameOverClosed = false;
     this.points = 0;
     this.moves = 0;
@@ -121,6 +128,7 @@ export default class GameService extends Service {
     const token = ++this.animationToken;
 
     this.animating = true;
+    this.mergePhase = 'none';
 
     const durationMs = Math.round(this.settings.animationDurationSeconds * 1000);
     // Even if the user selects "instant", we still need at least a frame or two
@@ -129,14 +137,57 @@ export default class GameService extends Service {
 
     for (const [index, step] of boards.entries()) {
       if (token !== this.animationToken) {
+        this.mergePhase = 'none';
+
         return;
       }
 
       this.board = step.board;
       this.points = this.points + step.points;
 
+      // Merge step: highlight the whole group, then collapse the group into the
+      // upgraded tile before continuing to gravity.
+      if (index < boards.length - 1 && boardHasRemovedTiles(step.board)) {
+        this.mergePhase = 'highlight';
+
+        const stillActiveAfterHighlight = await sleepChecked(
+          token,
+          this,
+          Math.max(90, Math.min(140, Math.round(stepDelayMs * 0.45)))
+        );
+
+        if (!stillActiveAfterHighlight) {
+          this.mergePhase = 'none';
+
+          return;
+        }
+
+        this.mergePhase = 'collapse';
+
+        const stillActiveAfterCollapse = await sleepChecked(
+          token,
+          this,
+          Math.max(120, Math.min(220, Math.round(stepDelayMs * 0.55)))
+        );
+
+        if (!stillActiveAfterCollapse) {
+          this.mergePhase = 'none';
+
+          return;
+        }
+
+        this.mergePhase = 'none';
+        continue;
+      }
+
       if (index < boards.length - 1) {
-        await sleep(stepDelayMs);
+        const stillActive = await sleepChecked(token, this, stepDelayMs);
+
+        if (!stillActive) {
+          this.mergePhase = 'none';
+
+          return;
+        }
       }
     }
 
@@ -145,7 +196,60 @@ export default class GameService extends Service {
     }
 
     this.animating = false;
+    this.mergePhase = 'none';
     this.persistProgress();
+  }
+
+  isMergeTarget(position: Position): boolean {
+    if (this.mergePhase === 'none') {
+      return false;
+    }
+
+    const set = this.getMergeTargetsForBoard(this.board);
+
+    return set.has(positionToNumber(position, this.board));
+  }
+
+  isMergeGroupTile(tile: Tile, position: Position): boolean {
+    if (this.mergePhase === 'none') {
+      return false;
+    }
+
+    return tile.removed || this.isMergeTarget(position);
+  }
+
+  isTokenActive(token: number): boolean {
+    return token === this.animationToken;
+  }
+
+  private getMergeTargetsForBoard(board: Board): Set<number> {
+    const cached = this.mergeTargetsCache.get(board);
+
+    if (cached) {
+      return cached;
+    }
+
+    const targets = new Set<number>();
+
+    for (let x = 0; x < board.length; x++) {
+      const column = board[x];
+
+      if (!column) {
+        continue;
+      }
+
+      for (let y = 0; y < column.length; y++) {
+        const tile = column[y];
+
+        if (tile?.removed) {
+          targets.add(positionToNumber(tile.mergedTo, board));
+        }
+      }
+    }
+
+    this.mergeTargetsCache.set(board, targets);
+
+    return targets;
   }
 
   clickTile(position: Position): void {
@@ -305,6 +409,28 @@ export default class GameService extends Service {
       this.highscore = this.points;
     }
   }
+}
+
+function boardHasRemovedTiles(board: Board): boolean {
+  for (const column of board) {
+    for (const tile of column) {
+      if (tile.removed) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+async function sleepChecked(
+  token: number,
+  game: GameService,
+  ms: number
+): Promise<boolean> {
+  await sleep(ms);
+
+  return game.isTokenActive(token);
 }
 
 function clamp(value: number, min: number, max: number): number {

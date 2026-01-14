@@ -55,27 +55,61 @@ export default class TileComponent extends Component<Args> {
       this.args.position
     );
 
+    const mergePhase = this.game.mergePhase;
+    const mergeX =
+      mergePhase === 'collapse' && this.args.tile.removed
+        ? Math.round((this.args.tile.mergedTo.x - this.args.position.x) * step)
+        : 0;
+    const mergeY =
+      mergePhase === 'collapse' && this.args.tile.removed
+        ? Math.round((this.args.tile.mergedTo.y - this.args.position.y) * step)
+        : 0;
+
     const duration = this.isDragging
       ? 0
       : this.game.isPreviewTarget(this.args.position)
         ? 60
         : Math.max(120, this.args.durationMs ?? 0);
 
-    return `--pos-x:${posX}px;--pos-y:${posY}px;--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
+    return `--pos-x:${posX}px;--pos-y:${posY}px;--merge-x:${mergeX}px;--merge-y:${mergeY}px;--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
   }
 
   get wrapperClass(): string {
-    return this.isDragging ? 'tile-wrap tile-wrap-dragging' : 'tile-wrap';
+    const dragging = this.isDragging ? ' tile-wrap-dragging' : '';
+    const merging =
+      this.args.tile.removed && this.game.mergePhase === 'collapse'
+        ? ' tile-wrap-merging'
+        : '';
+
+    return `tile-wrap${dragging}${merging}`;
   }
 
   get classes(): string {
     const selected = this.args.selected ? ' tile-selected' : '';
-    const removed = this.args.tile.removed ? ' tile-removed' : '';
+    const removed =
+      this.args.tile.removed && this.game.mergePhase === 'none'
+        ? ' tile-removed'
+        : '';
+    const mergeOut =
+      this.args.tile.removed && this.game.mergePhase === 'collapse'
+        ? ' tile-merge-out'
+        : '';
+    const group = this.game.isMergeGroupTile(this.args.tile, this.args.position)
+      ? ' tile-group'
+      : '';
+    const groupHighlight =
+      this.game.mergePhase === 'highlight' &&
+      this.game.isMergeGroupTile(this.args.tile, this.args.position)
+        ? ' tile-group-highlight'
+        : '';
+    const target = this.game.isMergeTarget(this.args.position)
+      ? ' tile-merge-target'
+      : '';
     const invalid = this.game.invalidTileIds.includes(this.args.tile.id)
       ? ' tile-invalid'
       : '';
 
-    return `tile${selected}${removed}${invalid}`;
+    return `tile${selected}${removed}${mergeOut}${group}${groupHighlight}${target}${invalid}`;
   }
 
   get displayValue(): number {
@@ -89,6 +123,10 @@ export default class TileComponent extends Component<Args> {
 
   @action
   pointerDown(event: PointerEvent): void {
+    if (this.game.animating) {
+      return;
+    }
+
     event.preventDefault();
 
     this.isDragging = true;
