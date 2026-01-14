@@ -4,5 +4,6 @@
         "@glint/ember-tsc": "^1.0.9",
         "eslint": "^9.39.2",
         "prettier": "^3.7.4"
-    }
+    },
+    "packageManager": "pnpm@10.28.0"
 }
