@@ -95,7 +95,10 @@ export default class GameService extends Service {
 
     this.animating = true;
 
-    const durationSeconds = this.settings.animationDurationSeconds;
+    const durationMs = Math.round(this.settings.animationDurationSeconds * 1000);
+    // Even if the user selects "instant", we still need at least a frame or two
+    // between board states for movement/cascade animations to be visible.
+    const stepDelayMs = Math.max(120, durationMs) + 60;
 
     for (const [index, step] of boards.entries()) {
       if (token !== this.animationToken) {
@@ -105,8 +108,8 @@ export default class GameService extends Service {
       this.board = step.board;
       this.points = this.points + step.points;
 
-      if (index < boards.length - 1 && durationSeconds > 0) {
-        await sleep(durationSeconds * 1000 + 100);
+      if (index < boards.length - 1) {
+        await sleep(stepDelayMs);
       }
     }
 

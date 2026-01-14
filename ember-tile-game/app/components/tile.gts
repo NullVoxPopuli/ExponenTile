@@ -11,7 +11,7 @@ import {
   type Tile,
 } from '../game/board';
 import bumpOnChange from '../modifiers/bump-on-change';
-import flip from '../modifiers/flip';
+import spawn from '../modifiers/spawn';
 import { getTileDisplayValue } from '../utils/sharing';
 
 import type GameService from '../services/game';
@@ -46,11 +46,16 @@ export default class TileComponent extends Component<Args> {
   }
 
   get wrapperStyle(): string {
-    const duration = this.isDragging ? 0 : (this.args.durationMs ?? 0);
+    const duration = this.isDragging
+      ? 0
+      : Math.max(120, this.args.durationMs ?? 0);
+    const step = getTileStepPx();
+    const posX = this.args.position.x * step;
+    const posY = this.args.position.y * step;
     const x = this.dragX;
     const y = this.dragY;
 
-    return `--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
+    return `--pos-x:${posX}px;--pos-y:${posY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
   }
 
   get wrapperClass(): string {
@@ -58,7 +63,10 @@ export default class TileComponent extends Component<Args> {
   }
 
   get classes(): string {
-    return `tile${this.args.selected ? ' tile-selected' : ''}`;
+    const selected = this.args.selected ? ' tile-selected' : '';
+    const removed = this.args.tile.removed ? ' tile-removed' : '';
+
+    return `tile${selected}${removed}`;
   }
 
   get displayValue(): number {
@@ -161,7 +169,7 @@ export default class TileComponent extends Component<Args> {
     <div
       class={{this.wrapperClass}}
       style={{this.wrapperStyle}}
-      {{flip @position.x @position.y}}
+      {{spawn}}
     >
       <div
         role="button"

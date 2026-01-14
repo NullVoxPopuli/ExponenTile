@@ -226,11 +226,25 @@ export default class GameComponent extends Component {
   // computed styles
   get boardStyle(): string {
     const size = this.game.board.length;
+    const tileSize = getRootCSSPxVar('--tile-size', 56);
+    const tileGap = getRootCSSPxVar('--tile-gap', 6);
+    const step = tileSize + tileGap;
+    const boardPx = size * step - tileGap;
 
-    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;`;
+    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;--board-px:${boardPx}px;`;
   }
 
   get animationDurationMs(): number {
-    return Math.max(0, Math.round(this.settings.animationDurationSeconds * 1000));
+    return Math.max(
+      120,
+      Math.round(this.settings.animationDurationSeconds * 1000)
+    );
   }
+}
+
+function getRootCSSPxVar(name: string, fallback: number): number {
+  const raw = getComputedStyle(document.documentElement).getPropertyValue(name);
+  const parsed = parseFloat(raw);
+
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
