@@ -31,6 +31,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: 'dist'
+          path: './ember-tile-game/dist'
 
   # Deploy job
   deploy:
