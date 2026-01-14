@@ -5,10 +5,10 @@ import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 
 import { encodeStateInURL } from '../utils/sharing';
-import SettingsPanel from './settings-panel';
-import ShareButton from './share-button';
-import TileComponent from './tile';
-import TutorialModal from './tutorial-modal';
+import SettingsPanel from '#components/settings-panel';
+import ShareButton from '#components/share-button';
+import TileComponent from '#components/tile';
+import TutorialModal from '#components/tutorial-modal';
 
 import type { Board, Position, Tile } from '../game/board';
 import type GameService from '../services/game';
@@ -226,12 +226,7 @@ export default class GameComponent extends Component {
   // computed styles
   get boardStyle(): string {
     const size = this.game.board.length;
-    const tileSize = getRootCSSPxVar('--tile-size', 56);
-    const tileGap = getRootCSSPxVar('--tile-gap', 6);
-    const step = tileSize + tileGap;
-    const boardPx = size * step - tileGap;
-
-    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;--board-px:${boardPx}px;`;
+    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;`;
   }
 
   get animationDurationMs(): number {
@@ -240,11 +235,4 @@ export default class GameComponent extends Component {
       Math.round(this.settings.animationDurationSeconds * 1000)
     );
   }
-}
-
-function getRootCSSPxVar(name: string, fallback: number): number {
-  const raw = getComputedStyle(document.documentElement).getPropertyValue(name);
-  const parsed = parseFloat(raw);
-
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }

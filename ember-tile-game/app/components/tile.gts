@@ -46,16 +46,22 @@ export default class TileComponent extends Component<Args> {
   }
 
   get wrapperStyle(): string {
-    const duration = this.isDragging
-      ? 0
-      : Math.max(120, this.args.durationMs ?? 0);
     const step = getTileStepPx();
-    const posX = this.args.position.x * step;
-    const posY = this.args.position.y * step;
+    const posX = Math.round(this.args.position.x * step);
+    const posY = Math.round(this.args.position.y * step);
     const x = this.dragX;
     const y = this.dragY;
+    const { x: previewX, y: previewY } = this.game.getPreviewOffset(
+      this.args.position
+    );
 
-    return `--pos-x:${posX}px;--pos-y:${posY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
+    const duration = this.isDragging
+      ? 0
+      : this.game.isPreviewTarget(this.args.position)
+        ? 60
+        : Math.max(120, this.args.durationMs ?? 0);
+
+    return `--pos-x:${posX}px;--pos-y:${posY}px;--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
   }
 
   get wrapperClass(): string {
@@ -65,8 +71,11 @@ export default class TileComponent extends Component<Args> {
   get classes(): string {
     const selected = this.args.selected ? ' tile-selected' : '';
     const removed = this.args.tile.removed ? ' tile-removed' : '';
+    const invalid = this.game.invalidTileIds.includes(this.args.tile.id)
+      ? ' tile-invalid'
+      : '';
 
-    return `tile${selected}${removed}`;
+    return `tile${selected}${removed}${invalid}`;
   }
 
   get displayValue(): number {
@@ -89,6 +98,7 @@ export default class TileComponent extends Component<Args> {
       x: event.clientX,
       y: event.clientY,
     };
+    this.game.clearDragPreview();
 
     (event.currentTarget as HTMLElement | null)?.setPointerCapture(
       event.pointerId
@@ -108,16 +118,19 @@ export default class TileComponent extends Component<Args> {
     const deltaX = event.clientX - start.x;
     const deltaY = event.clientY - start.y;
 
+    const step = getTileStepPx();
     // Only drag in one axis (feels like the original).
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      this.dragX = clamp(deltaX, -getTileStepPx(), getTileStepPx());
+      this.dragX = clamp(deltaX, -step, step);
       this.dragY = 0;
 
+      this.game.updateDragPreview(this.args.position, this.dragX, 0, step);
       return;
     }
 
     this.dragX = 0;
-    this.dragY = clamp(deltaY, -getTileStepPx(), getTileStepPx());
+    this.dragY = clamp(deltaY, -step, step);
+    this.game.updateDragPreview(this.args.position, 0, this.dragY, step);
   }
 
   @action
@@ -146,6 +159,7 @@ export default class TileComponent extends Component<Args> {
     this.isDragging = false;
     this.dragX = 0;
     this.dragY = 0;
+    this.game.clearDragPreview();
   }
 
   @action
@@ -154,6 +168,7 @@ export default class TileComponent extends Component<Args> {
     this.isDragging = false;
     this.dragX = 0;
     this.dragY = 0;
+    this.game.clearDragPreview();
   }
 
   @action

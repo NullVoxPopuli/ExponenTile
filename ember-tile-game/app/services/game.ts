@@ -33,11 +33,18 @@ export default class GameService extends Service {
   @tracked loading = true;
   @tracked animating = false;
   @tracked selectedFrom: Position | undefined = undefined;
+  @tracked dragPreviewFrom: Position | undefined = undefined;
+  @tracked dragPreviewTo: Position | undefined = undefined;
+  @tracked dragPreviewX = 0;
+  @tracked dragPreviewY = 0;
   @tracked highscore = 0;
   @tracked debug = false;
   @tracked gameOverClosed = false;
 
+  @tracked invalidTileIds: number[] = [];
+
   private animationToken = 0;
+  private invalidToken = 0;
 
   constructor(owner: unknown) {
     super(owner as never);
@@ -86,7 +93,27 @@ export default class GameService extends Service {
       return;
     }
 
-    const boards = swapTile(a, b, this.board);
+    const beforeBoard = this.board;
+    const boards = swapTile(a, b, beforeBoard);
+
+    const isInvalidMove = boards.length === 2;
+
+    if (isInvalidMove) {
+      const fromTile = beforeBoard[a.x]?.[a.y];
+      const toTile = beforeBoard[b.x]?.[b.y];
+
+      if (fromTile && toTile) {
+        this.invalidTileIds = [fromTile.id, toTile.id];
+
+        const clearToken = ++this.invalidToken;
+
+        window.setTimeout(() => {
+          if (clearToken === this.invalidToken) {
+            this.invalidTileIds = [];
+          }
+        }, 450);
+      }
+    }
 
     // React increments moves on every attempted swap (including invalid swaps)
     this.moves = this.moves + 1;
@@ -180,6 +207,77 @@ export default class GameService extends Service {
     }
   }
 
+  updateDragPreview(
+    from: Position,
+    deltaX: number,
+    deltaY: number,
+    stepPx: number
+  ): void {
+    if (this.animating) {
+      return;
+    }
+
+    const absX = Math.abs(deltaX);
+    const absY = Math.abs(deltaY);
+
+    const factor = 0.75;
+    const max = Math.max(0, stepPx * factor);
+
+    let to: Position | undefined;
+    let previewX = 0;
+    let previewY = 0;
+
+    if (absX > absY) {
+      to = {
+        x: from.x + (deltaX > 0 ? 1 : -1),
+        y: from.y,
+      };
+      previewX = clamp(-deltaX * factor, -max, max);
+    } else if (absY > 0) {
+      to = {
+        x: from.x,
+        y: from.y + (deltaY > 0 ? 1 : -1),
+      };
+      previewY = clamp(-deltaY * factor, -max, max);
+    }
+
+    if (!to || !this.isInBounds(to)) {
+      this.clearDragPreview();
+
+      return;
+    }
+
+    this.dragPreviewFrom = from;
+    this.dragPreviewTo = to;
+    this.dragPreviewX = previewX;
+    this.dragPreviewY = previewY;
+  }
+
+  clearDragPreview(): void {
+    this.dragPreviewFrom = undefined;
+    this.dragPreviewTo = undefined;
+    this.dragPreviewX = 0;
+    this.dragPreviewY = 0;
+  }
+
+  isPreviewTarget(position: Position): boolean {
+    const to = this.dragPreviewTo;
+
+    return Boolean(to && to.x === position.x && to.y === position.y);
+  }
+
+  getPreviewOffset(position: Position): { x: number; y: number } {
+    if (!this.isPreviewTarget(position)) {
+      return { x: 0, y: 0 };
+    }
+
+    return { x: this.dragPreviewX, y: this.dragPreviewY };
+  }
+
+  private isInBounds({ x, y }: Position): boolean {
+    return x >= 0 && y >= 0 && x < this.size && y < this.size;
+  }
+
   private loadSavedState(): void {
     const gameState = getGameState();
 
@@ -207,6 +305,10 @@ export default class GameService extends Service {
       this.highscore = this.points;
     }
   }
+}
+
+function clamp(value: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, value));
 }
 
 declare module '@ember/service' {
