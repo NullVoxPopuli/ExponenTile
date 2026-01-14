@@ -65,13 +65,32 @@ export default class TileComponent extends Component<Args> {
         ? Math.round((this.args.tile.mergedTo.y - this.args.position.y) * step)
         : 0;
 
-    const duration = this.isDragging
+    const spawnRows = this.game.spawnRowsByTileId[this.args.tile.id] ?? 0;
+    const spawnFromY = spawnRows > 0 ? Math.round(-spawnRows * step) : -80;
+
+    const baseDuration = this.isDragging
       ? 0
       : this.game.isPreviewTarget(this.args.position)
         ? 60
         : Math.max(120, this.args.durationMs ?? 0);
 
-    return `--pos-x:${posX}px;--pos-y:${posY}px;--merge-x:${mergeX}px;--merge-y:${mergeY}px;--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
+    let duration = baseDuration;
+
+    if (!this.isDragging) {
+      const maxDistance = maxDistanceFromMap(this.game.moveDistanceByTileId);
+      const distance = this.game.moveDistanceByTileId[this.args.tile.id] ?? 0;
+
+      if (maxDistance > 0) {
+        // Use the service-selected gravity duration as the upper bound
+        // (so step timing is long enough), but make smaller drops quicker.
+        const min = Math.max(220, Math.round(baseDuration * 0.55));
+        const distanceFactor = Math.min(1, distance / maxDistance);
+
+        duration = Math.round(min + (baseDuration - min) * distanceFactor);
+      }
+    }
+
+    return `--pos-x:${posX}px;--pos-y:${posY}px;--spawn-from-y:${spawnFromY}px;--merge-x:${mergeX}px;--merge-y:${mergeY}px;--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
   }
 
   get wrapperClass(): string {
@@ -158,11 +177,13 @@ export default class TileComponent extends Component<Args> {
 
     const step = getTileStepPx();
     // Only drag in one axis (feels like the original).
+
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
       this.dragX = clamp(deltaX, -step, step);
       this.dragY = 0;
 
       this.game.updateDragPreview(this.args.position, this.dragX, 0, step);
+
       return;
     }
 
@@ -244,6 +265,16 @@ export default class TileComponent extends Component<Args> {
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function maxDistanceFromMap(distanceByTileId: Record<number, number>): number {
+  let max = 0;
+
+  for (const value of Object.values(distanceByTileId)) {
+    max = Math.max(max, value);
+  }
+
+  return max;
 }
 
 function getTileStepPx(): number {

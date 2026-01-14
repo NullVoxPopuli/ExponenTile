@@ -30,7 +30,9 @@ export default class GameService extends Service {
   readonly animationDurationMs = 400;
 
   @tracked moveDurationMs = this.animationDurationMs;
-  @tracked moveEasing = 'cubic-bezier(0.22, 1, 0.36, 1)';
+  @tracked moveEasing = 'cubic-bezier(0.2, 0, 0.1, 1)';
+  @tracked moveDistanceByTileId: Record<number, number> = {};
+  @tracked spawnRowsByTileId: Record<number, number> = {};
 
   readonly size = 8;
 
@@ -83,6 +85,10 @@ export default class GameService extends Service {
     this.animationToken++;
     this.animating = false;
     this.mergePhase = 'none';
+    this.moveDurationMs = this.animationDurationMs;
+    this.moveEasing = 'cubic-bezier(0.2, 0, 0.1, 1)';
+    this.moveDistanceByTileId = {};
+    this.spawnRowsByTileId = {};
     this.gameOverClosed = false;
     this.points = 0;
     this.moves = 0;
@@ -134,10 +140,10 @@ export default class GameService extends Service {
 
     this.animating = true;
     this.mergePhase = 'none';
+    this.moveDistanceByTileId = {};
+    this.spawnRowsByTileId = {};
 
-    // Track whether we just displayed a "removed tiles" board so the next
-    // board (gravity) can use a smoother fall timing.
-    let previousHadRemovedTiles = false;
+    let previousBoardStep: Board | undefined;
 
     for (const [index, step] of boards.entries()) {
       if (token !== this.animationToken) {
@@ -148,14 +154,17 @@ export default class GameService extends Service {
 
       const hasRemovedTiles = boardHasRemovedTiles(step.board);
 
-      if (!hasRemovedTiles && previousHadRemovedTiles) {
-        // Gravity step: slightly longer + smoother easing for the fall.
-        this.moveDurationMs = getGravityDurationMs(this.animationDurationMs);
-        this.moveEasing = 'cubic-bezier(0.12, 0.9, 0.2, 1)';
-      } else {
-        this.moveDurationMs = this.animationDurationMs;
-        this.moveEasing = 'cubic-bezier(0.22, 1, 0.36, 1)';
-      }
+      const movementInfo: MovementInfo = previousBoardStep
+        ? getMovementInfo(previousBoardStep, step.board)
+        : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+
+      this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
+      this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
+      this.moveEasing = 'cubic-bezier(0.2, 0, 0.1, 1)';
+      this.moveDurationMs = getGravityDurationMs(
+        this.animationDurationMs,
+        movementInfo.maxDistanceSteps
+      );
 
       this.board = step.board;
       this.points = this.points + step.points;
@@ -205,7 +214,7 @@ export default class GameService extends Service {
           return;
         }
 
-        previousHadRemovedTiles = true;
+        previousBoardStep = step.board;
         continue;
       }
 
@@ -220,7 +229,7 @@ export default class GameService extends Service {
         }
       }
 
-      previousHadRemovedTiles = hasRemovedTiles;
+      previousBoardStep = step.board;
     }
 
     if (boardContains2048Tile(this.board)) {
@@ -230,7 +239,9 @@ export default class GameService extends Service {
     this.animating = false;
     this.mergePhase = 'none';
     this.moveDurationMs = this.animationDurationMs;
-    this.moveEasing = 'cubic-bezier(0.22, 1, 0.36, 1)';
+    this.moveEasing = 'cubic-bezier(0.2, 0, 0.1, 1)';
+    this.moveDistanceByTileId = {};
+    this.spawnRowsByTileId = {};
     this.persistProgress();
   }
 
@@ -462,9 +473,104 @@ function getStepDelayMs(durationMs: number): number {
   return Math.max(120, durationMs) + 60;
 }
 
-function getGravityDurationMs(baseDurationMs: number): number {
-  // Slightly longer than swap/merge so the fall reads as "weighty".
-  return Math.max(160, Math.round(baseDurationMs * 1.15));
+function getGravityDurationMs(baseDurationMs: number, maxDistanceSteps: number): number {
+  if (maxDistanceSteps <= 1) {
+    return baseDurationMs;
+  }
+
+  // Longer for bigger falls so nothing gets cut off mid-transition.
+  // This value is also used to decide how long we wait before advancing to the
+  // next board state, so it must cover the longest fall.
+  const base = Math.max(260, Math.round(baseDurationMs * 1.15));
+  const extra = Math.max(0, Math.round(maxDistanceSteps) * 90);
+
+  return Math.min(1200, base + extra);
+}
+
+type MovementInfo = {
+  maxDistanceSteps: number;
+  moveDistanceByTileId: Record<number, number>;
+  spawnRowsByTileId: Record<number, number>;
+};
+
+function getMovementInfo(previous: Board, next: Board): MovementInfo {
+  const prevPosById = new Map<number, Position>();
+
+  for (let x = 0; x < previous.length; x++) {
+    const column = previous[x];
+
+    if (!column) {
+      continue;
+    }
+
+    for (let y = 0; y < column.length; y++) {
+      const tile = column[y];
+
+      if (tile) {
+        prevPosById.set(tile.id, { x, y });
+      }
+    }
+  }
+
+  const newTilesByColumn = new Map<number, number[]>();
+  const moveDistanceByTileId: Record<number, number> = {};
+  let maxDistanceSteps = 0;
+
+  for (let x = 0; x < next.length; x++) {
+    const column = next[x];
+
+    if (!column) {
+      continue;
+    }
+
+    for (let y = 0; y < column.length; y++) {
+      const tile = column[y];
+
+      if (!tile) {
+        continue;
+      }
+
+      const prevPos = prevPosById.get(tile.id);
+
+      if (!prevPos) {
+        const list = newTilesByColumn.get(x) ?? [];
+
+        list.push(tile.id);
+        newTilesByColumn.set(x, list);
+
+        continue;
+      }
+
+      const distance = Math.max(
+        Math.abs(prevPos.x - x),
+        Math.abs(prevPos.y - y)
+      );
+
+      if (distance > 0) {
+        moveDistanceByTileId[tile.id] = distance;
+        maxDistanceSteps = Math.max(maxDistanceSteps, distance);
+      }
+    }
+  }
+
+  const spawnRowsByTileId: Record<number, number> = {};
+
+  for (const tileIds of newTilesByColumn.values()) {
+    const spawnRows = tileIds.length;
+
+    if (spawnRows <= 0) {
+      continue;
+    }
+
+    for (const id of tileIds) {
+      spawnRowsByTileId[id] = spawnRows;
+      moveDistanceByTileId[id] = Math.max(moveDistanceByTileId[id] ?? 0, spawnRows);
+    }
+
+    maxDistanceSteps = Math.max(maxDistanceSteps, spawnRows);
+  }
+
+  return { maxDistanceSteps, moveDistanceByTileId, spawnRowsByTileId };
 }
 
 async function sleepChecked(

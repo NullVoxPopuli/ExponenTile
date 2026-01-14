@@ -18,7 +18,11 @@ export default modifier((element: HTMLElement) => {
   }
 
   // Start slightly above and slide in.
-  element.style.setProperty('--spawn-y', '-80px');
+  const fromY = getComputedStyle(element)
+    .getPropertyValue('--spawn-from-y')
+    .trim();
+
+  element.style.setProperty('--spawn-y', fromY || '-80px');
 
   // Force initial style application.
   // eslint-disable-next-line @typescript-eslint/no-unused-expressions
