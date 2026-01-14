@@ -29,6 +29,9 @@ export default class GameService extends Service {
    */
   readonly animationDurationMs = 400;
 
+  @tracked moveDurationMs = this.animationDurationMs;
+  @tracked moveEasing = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
   readonly size = 8;
 
   @tracked board: Board = generateBoard(this.size);
@@ -132,10 +135,9 @@ export default class GameService extends Service {
     this.animating = true;
     this.mergePhase = 'none';
 
-    const durationMs = this.animationDurationMs;
-    // Even if the user selects "instant", we still need at least a frame or two
-    // between board states for movement/cascade animations to be visible.
-    const stepDelayMs = Math.max(120, durationMs) + 60;
+    // Track whether we just displayed a "removed tiles" board so the next
+    // board (gravity) can use a smoother fall timing.
+    let previousHadRemovedTiles = false;
 
     for (const [index, step] of boards.entries()) {
       if (token !== this.animationToken) {
@@ -144,13 +146,26 @@ export default class GameService extends Service {
         return;
       }
 
+      const hasRemovedTiles = boardHasRemovedTiles(step.board);
+
+      if (!hasRemovedTiles && previousHadRemovedTiles) {
+        // Gravity step: slightly longer + smoother easing for the fall.
+        this.moveDurationMs = getGravityDurationMs(this.animationDurationMs);
+        this.moveEasing = 'cubic-bezier(0.12, 0.9, 0.2, 1)';
+      } else {
+        this.moveDurationMs = this.animationDurationMs;
+        this.moveEasing = 'cubic-bezier(0.22, 1, 0.36, 1)';
+      }
+
       this.board = step.board;
       this.points = this.points + step.points;
 
       // Merge step: highlight the whole group, then collapse the group into the
       // upgraded tile before continuing to gravity.
-      if (index < boards.length - 1 && boardHasRemovedTiles(step.board)) {
+      if (index < boards.length - 1 && hasRemovedTiles) {
         this.mergePhase = 'highlight';
+
+        const stepDelayMs = getStepDelayMs(this.moveDurationMs);
 
         const stillActiveAfterHighlight = await sleepChecked(
           token,
@@ -179,10 +194,23 @@ export default class GameService extends Service {
         }
 
         this.mergePhase = 'none';
+
+        // Small beat after the group clears, before gravity starts.
+        // This helps match the React feel (clear → pause → cascade).
+        const stillActiveAfterPause = await sleepChecked(token, this, 90);
+
+        if (!stillActiveAfterPause) {
+          this.mergePhase = 'none';
+
+          return;
+        }
+
+        previousHadRemovedTiles = true;
         continue;
       }
 
       if (index < boards.length - 1) {
+        const stepDelayMs = getStepDelayMs(this.moveDurationMs);
         const stillActive = await sleepChecked(token, this, stepDelayMs);
 
         if (!stillActive) {
@@ -191,6 +219,8 @@ export default class GameService extends Service {
           return;
         }
       }
+
+      previousHadRemovedTiles = hasRemovedTiles;
     }
 
     if (boardContains2048Tile(this.board)) {
@@ -199,6 +229,8 @@ export default class GameService extends Service {
 
     this.animating = false;
     this.mergePhase = 'none';
+    this.moveDurationMs = this.animationDurationMs;
+    this.moveEasing = 'cubic-bezier(0.22, 1, 0.36, 1)';
     this.persistProgress();
   }
 
@@ -423,6 +455,16 @@ function boardHasRemovedTiles(board: Board): boolean {
   }
 
   return false;
+}
+
+function getStepDelayMs(durationMs: number): number {
+  // Keep a small cushion so transforms can finish visibly.
+  return Math.max(120, durationMs) + 60;
+}
+
+function getGravityDurationMs(baseDurationMs: number): number {
+  // Slightly longer than swap/merge so the fall reads as "weighty".
+  return Math.max(160, Math.round(baseDurationMs * 1.15));
 }
 
 async function sleepChecked(

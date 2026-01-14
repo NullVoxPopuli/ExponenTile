@@ -28,9 +28,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
         working-directory: ./ember-tile-game
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-pages-artifact@v3
         with:
-          name: 'dist'
           path: './ember-tile-game/dist'
 
   # Deploy job
@@ -53,6 +52,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4 
-        with:
-          artifact_name: 'dist'
+        uses: actions/deploy-pages@v4

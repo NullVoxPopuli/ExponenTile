@@ -176,10 +176,11 @@ export default class GameComponent extends Component {
   // computed styles
   get boardStyle(): string {
     const size = this.game.board.length;
-    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;`;
+
+    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;--move-ease:${this.game.moveEasing};`;
   }
 
   get animationDurationMs(): number {
-    return this.game.animationDurationMs;
+    return this.game.moveDurationMs;
   }
 }
