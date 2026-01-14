@@ -5,14 +5,12 @@ import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 
 import { encodeStateInURL } from '../utils/sharing';
-import SettingsPanel from '#components/settings-panel';
 import ShareButton from '#components/share-button';
 import TileComponent from '#components/tile';
 import TutorialModal from '#components/tutorial-modal';
 
 import type { Board, Position, Tile } from '../game/board';
 import type GameService from '../services/game';
-import type SettingsService from '../services/settings';
 
 type RowCell = { tile: Tile; position: Position; selected: boolean };
 
@@ -34,18 +32,9 @@ function tileAt(board: Board, { x, y }: Position): Tile {
 
 export default class GameComponent extends Component {
   @service declare game: GameService;
-  @service declare settings: SettingsService;
-
-  get isTop(): boolean {
-    return this.settings.gamePosition === 'top';
-  }
-
-  get isBottom(): boolean {
-    return this.settings.gamePosition === 'bottom';
-  }
 
   get shellClass(): string {
-    return `game-shell${this.isBottom ? ' game-shell-bottom' : ''}`;
+    return 'game-shell';
   }
 
   @cached
@@ -101,41 +90,38 @@ export default class GameComponent extends Component {
       <TutorialModal />
 
       <div class={{this.shellClass}}>
-        {{#if this.isTop}}
-          <div class="hud">
-            <div class="hud-row">
-              <div class="hud-scores">
-                <div class="hud-score">
-                  <div class="hud-label">Score</div>
-                  <div class="hud-value">{{this.game.points}}</div>
-                </div>
-                <div class="hud-score">
-                  <div class="hud-label">Highscore</div>
-                  <div class="hud-value">{{this.displayHighscore}}</div>
-                </div>
-                <div class="hud-score">
-                  <div class="hud-label">Moves</div>
-                  <div class="hud-value">{{this.game.moves}}</div>
-                </div>
+        <div class="hud">
+          <div class="hud-row">
+            <div class="hud-scores">
+              <div class="hud-score">
+                <div class="hud-label">Score</div>
+                <div class="hud-value">{{this.game.points}}</div>
               </div>
-
-              <div class="hud-actions">
-                <button
-                  type="button"
-                  class="btn"
-                  {{on "click" this.hint}}
-                  disabled={{this.game.animating}}
-                >
-                  Hint
-                </button>
-                <button type="button" class="btn" {{on "click" this.newGame}}>
-                  New Game
-                </button>
-                <SettingsPanel />
+              <div class="hud-score">
+                <div class="hud-label">Highscore</div>
+                <div class="hud-value">{{this.displayHighscore}}</div>
+              </div>
+              <div class="hud-score">
+                <div class="hud-label">Moves</div>
+                <div class="hud-value">{{this.game.moves}}</div>
               </div>
             </div>
+
+            <div class="hud-actions">
+              <button
+                type="button"
+                class="btn"
+                {{on "click" this.hint}}
+                disabled={{this.game.animating}}
+              >
+                Hint
+              </button>
+              <button type="button" class="btn" {{on "click" this.newGame}}>
+                New Game
+              </button>
+            </div>
           </div>
-        {{/if}}
+        </div>
 
         <div class="board" style={{this.boardStyle}}>
           {{#each this.cells key="tile.id" as |cell|}}
@@ -147,42 +133,6 @@ export default class GameComponent extends Component {
             />
           {{/each}}
         </div>
-
-        {{#if this.isBottom}}
-          <div class="hud">
-            <div class="hud-row">
-              <div class="hud-scores">
-                <div class="hud-score">
-                  <div class="hud-label">Score</div>
-                  <div class="hud-value">{{this.game.points}}</div>
-                </div>
-                <div class="hud-score">
-                  <div class="hud-label">Highscore</div>
-                  <div class="hud-value">{{this.displayHighscore}}</div>
-                </div>
-                <div class="hud-score">
-                  <div class="hud-label">Moves</div>
-                  <div class="hud-value">{{this.game.moves}}</div>
-                </div>
-              </div>
-
-              <div class="hud-actions">
-                <button
-                  type="button"
-                  class="btn"
-                  {{on "click" this.hint}}
-                  disabled={{this.game.animating}}
-                >
-                  Hint
-                </button>
-                <button type="button" class="btn" {{on "click" this.newGame}}>
-                  New Game
-                </button>
-                <SettingsPanel />
-              </div>
-            </div>
-          </div>
-        {{/if}}
 
         {{#if this.game.showGameOver}}
           <div class="modal-layer">
@@ -230,9 +180,6 @@ export default class GameComponent extends Component {
   }
 
   get animationDurationMs(): number {
-    return Math.max(
-      120,
-      Math.round(this.settings.animationDurationSeconds * 1000)
-    );
+    return this.game.animationDurationMs;
   }
 }

@@ -1,5 +1,5 @@
 import { tracked } from '@glimmer/tracking';
-import Service, { inject as service } from '@ember/service';
+import Service from '@ember/service';
 
 import {
   type Board,
@@ -22,10 +22,12 @@ import {
   setHighscore,
 } from '../utils/stored-state';
 
-import type SettingsService from './settings';
-
 export default class GameService extends Service {
-  @service declare settings: SettingsService;
+  /**
+   * Fixed default animation duration (settings UI removed).
+   * Matches the previous "medium" feel.
+   */
+  readonly animationDurationMs = 400;
 
   readonly size = 8;
 
@@ -130,7 +132,7 @@ export default class GameService extends Service {
     this.animating = true;
     this.mergePhase = 'none';
 
-    const durationMs = Math.round(this.settings.animationDurationSeconds * 1000);
+    const durationMs = this.animationDurationMs;
     // Even if the user selects "instant", we still need at least a frame or two
     // between board states for movement/cascade animations to be visible.
     const stepDelayMs = Math.max(120, durationMs) + 60;
