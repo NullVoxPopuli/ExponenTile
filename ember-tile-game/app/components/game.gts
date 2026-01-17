@@ -108,8 +108,8 @@ export default class GameComponent extends Component {
     <div class="app-shell">
       <TutorialModal />
 
-      <div class={{this.shellClass}}>
-        <div class="board" style={{this.boardStyle}}>
+      <div class={{this.shellClass}} style={{this.shellStyle}}>
+        <div class="board">
           {{#each this.cells key="key" as |cell|}}
             <TileComponent
               @tile={{cell.tile}}
@@ -216,6 +216,10 @@ export default class GameComponent extends Component {
     const size = this.game.board.length;
 
     return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;--move-ease:${this.game.moveEasing};`;
+  }
+
+  get shellStyle(): string {
+    return this.boardStyle;
   }
 
   get animationDurationMs(): number {

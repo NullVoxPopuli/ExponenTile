@@ -109,10 +109,15 @@ a {
   display: grid;
   gap: 14px;
   justify-items: center;
+
+  --board-step: calc(var(--tile-size) + var(--tile-gap));
+  --board-px: calc(var(--board-size) * var(--board-step) - var(--tile-gap));
 }
 
 .hud {
-  width: 100%;
+  box-sizing: border-box;
+  width: calc(var(--board-px) + 28px + 2px);
+  max-width: 100%;
   padding: 12px;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -172,10 +177,6 @@ a {
 .board {
   position: relative;
   box-sizing: border-box;
-
-  --board-step: calc(var(--tile-size) + var(--tile-gap));
-  --board-px: calc(var(--board-size) * var(--board-step) - var(--tile-gap));
-
   width: calc(var(--board-px) + 28px + 2px);
   height: calc(var(--board-px) + 28px + 2px);
   padding: 14px;
