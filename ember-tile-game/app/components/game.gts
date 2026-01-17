@@ -184,15 +184,17 @@ export default class GameComponent extends Component {
                 />
                 <button
                   type="button"
-                  class="btn btn-primary"
-                  {{on "click" this.newGame}}
-                >New Game</button>
-
-                <button
-                  type="button"
                   class="btn"
                   {{on "click" this.game.closeGameOver}}
                 >Admire game board</button>
+
+                <hr class="modal-separator" />
+
+                <button
+                  type="button"
+                  class="btn btn-primary"
+                  {{on "click" this.newGame}}
+                >New Game</button>
                 <a
                   class="btn btn-link"
                   href={{this.shareUrl}}
