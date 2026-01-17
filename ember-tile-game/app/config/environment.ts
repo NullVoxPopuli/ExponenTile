@@ -16,7 +16,7 @@ interface Config {
 const ENV: Config = {
   modulePrefix: 'ember-tile-game',
   environment: import.meta.env.DEV ? 'development' : 'production',
-  rootURL: '/',
+  rootURL: import.meta.env.BASE_URL,
   locationType: 'history',
   EmberENV: {},
   APP: {},
