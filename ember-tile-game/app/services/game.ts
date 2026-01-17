@@ -78,7 +78,15 @@ export default class GameService extends Service {
   }
 
   get showGameOver(): boolean {
-    return this.gameOver && !this.gameOverClosed;
+    // `gameOver` can become true during intermediate animation steps (e.g.
+    // before gravity/spawn resolves). Only surface the modal once the
+    // animation loop has fully completed and the board is at rest.
+    return (
+      !this.loading &&
+      !this.animating &&
+      this.gameOver &&
+      !this.gameOverClosed
+    );
   }
 
   closeGameOver(): void {
