@@ -194,12 +194,16 @@ a {
   width: var(--tile-size);
   height: var(--tile-size);
 
-  --spawn-offset: var(--spawn-from-y, 0);
+  --pos-x-px: calc(var(--pos-x, 0) * var(--board-step));
+  --pos-y-px: calc(var(--pos-y, 0) * var(--board-step));
+  --merge-x-px: calc(var(--merge-x, 0) * var(--board-step));
+  --merge-y-px: calc(var(--merge-y, 0) * var(--board-step));
+  --spawn-offset: calc(var(--spawn-from-y, 0) * var(--board-step));
 
   will-change: transform;
   backface-visibility: hidden;
-  transform: translate3d(var(--pos-x, 0), var(--pos-y, 0), 0)
-    translate3d(var(--merge-x, 0), var(--merge-y, 0), 0)
+  transform: translate3d(var(--pos-x-px, 0), var(--pos-y-px, 0), 0)
+    translate3d(var(--merge-x-px, 0), var(--merge-y-px, 0), 0)
     translate3d(var(--preview-x, 0), var(--preview-y, 0), 0)
     translate3d(var(--drag-x, 0), var(--drag-y, 0), 0)
     translate3d(0, var(--spawn-offset), 0)

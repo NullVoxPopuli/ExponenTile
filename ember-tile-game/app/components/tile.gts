@@ -46,9 +46,6 @@ export default class TileComponent extends Component<Args> {
   }
 
   get wrapperStyle(): string {
-    const step = getTileStepPx();
-    const posX = Math.round(this.args.position.x * step);
-    const posY = Math.round(this.args.position.y * step);
     const x = this.dragX;
     const y = this.dragY;
     const { x: previewX, y: previewY } = this.game.getPreviewOffset(
@@ -58,15 +55,15 @@ export default class TileComponent extends Component<Args> {
     const mergePhase = this.game.mergePhase;
     const mergeX =
       mergePhase === 'collapse' && this.args.tile.removed
-        ? Math.round((this.args.tile.mergedTo.x - this.args.position.x) * step)
+        ? this.args.tile.mergedTo.x - this.args.position.x
         : 0;
     const mergeY =
       mergePhase === 'collapse' && this.args.tile.removed
-        ? Math.round((this.args.tile.mergedTo.y - this.args.position.y) * step)
+        ? this.args.tile.mergedTo.y - this.args.position.y
         : 0;
 
     const spawnRows = this.game.spawnRowsByTileId[this.args.tile.id] ?? 0;
-    const spawnFromY = spawnRows > 0 ? Math.round(-spawnRows * step) : 0;
+    const spawnFromY = spawnRows > 0 ? -spawnRows : 0;
 
     const baseDuration = this.isDragging
       ? 0
@@ -97,7 +94,7 @@ export default class TileComponent extends Component<Args> {
       }
     }
 
-    return `--pos-x:${posX}px;--pos-y:${posY}px;--spawn-from-y:${spawnFromY}px;--merge-x:${mergeX}px;--merge-y:${mergeY}px;--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;--move-delay:${delay}ms;`;
+    return `--pos-x:${this.args.position.x};--pos-y:${this.args.position.y};--spawn-from-y:${spawnFromY};--merge-x:${mergeX};--merge-y:${mergeY};--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;--move-delay:${delay}ms;`;
   }
 
   get wrapperClass(): string {
