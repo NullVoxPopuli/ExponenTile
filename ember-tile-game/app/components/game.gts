@@ -12,7 +12,7 @@ import TutorialModal from '#components/tutorial-modal';
 import type { Board, Position, Tile } from '../game/board';
 import type GameService from '../services/game';
 
-type RowCell = { tile: Tile; position: Position; selected: boolean };
+type RowCell = { key: number; tile: Tile; position: Position; selected: boolean };
 
 function tileAt(board: Board, { x, y }: Position): Tile {
   const column = board[x];
@@ -50,6 +50,7 @@ export default class GameComponent extends Component {
         const position = { x, y };
 
         cells.push({
+          key: tileAt(board, position).id,
           tile: tileAt(board, position),
           position,
           selected: Boolean(
@@ -124,7 +125,7 @@ export default class GameComponent extends Component {
         </div>
 
         <div class="board" style={{this.boardStyle}}>
-          {{#each this.cells key="tile.id" as |cell|}}
+          {{#each this.cells key="key" as |cell|}}
             <TileComponent
               @tile={{cell.tile}}
               @position={{cell.position}}

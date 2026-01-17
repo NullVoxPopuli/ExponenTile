@@ -23,8 +23,15 @@ export default modifier((element: HTMLElement) => {
   //
   // Instead, we toggle a data attribute which CSS uses to animate the spawn.
   // Default state (no data-spawned) renders offset by --spawn-from-y.
-  // Next frame, mark as spawned so it transitions to 0.
+  // Mark as spawned *after* the element has had a chance to paint in its
+  // initial state; otherwise the browser can apply the final state before the
+  // first paint and the transition won't run.
   requestAnimationFrame(() => {
-    element.dataset.spawned = 'true';
+    // Force style/layout to ensure the initial transform is committed.
+    element.getBoundingClientRect();
+
+    requestAnimationFrame(() => {
+      element.dataset.spawned = 'true';
+    });
   });
 });
