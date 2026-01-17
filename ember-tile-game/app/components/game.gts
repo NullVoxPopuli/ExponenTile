@@ -4,6 +4,8 @@ import { on } from '@ember/modifier';
 import { action } from '@ember/object';
 import { inject as service } from '@ember/service';
 
+import config from 'ember-tile-game/config/environment';
+
 import { encodeStateInURL } from '../utils/sharing';
 import ShareButton from '#components/share-button';
 import TileComponent from '#components/tile';
@@ -13,6 +15,22 @@ import type { Board, Position, Tile } from '../game/board';
 import type GameService from '../services/game';
 
 type RowCell = { key: number; tile: Tile; position: Position; selected: boolean };
+
+function withRootURL(rootURL: string, path: string): string {
+  let base = rootURL || '/';
+
+  if (!base.startsWith('/')) {
+    base = `/${base}`;
+  }
+
+  if (!base.endsWith('/')) {
+    base = `${base}/`;
+  }
+
+  const child = path.startsWith('/') ? path.slice(1) : path;
+
+  return `${base}${child}`;
+}
 
 function tileAt(board: Board, { x, y }: Position): Tile {
   const column = board[x];
@@ -70,7 +88,7 @@ export default class GameComponent extends Component {
   get shareUrl(): string {
     const url = new URL(window.location.href);
 
-    url.pathname = '/shared';
+    url.pathname = withRootURL(config.rootURL, 'shared');
     url.search = encodeStateInURL(this.game.board, this.game.points);
 
     return url.toString();
