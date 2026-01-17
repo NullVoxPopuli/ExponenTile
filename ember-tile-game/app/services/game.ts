@@ -1,4 +1,5 @@
 import { tracked } from '@glimmer/tracking';
+import { action } from '@ember/object';
 import Service from '@ember/service';
 
 import {
@@ -89,6 +90,7 @@ export default class GameService extends Service {
     );
   }
 
+  @action
   closeGameOver(): void {
     this.gameOverClosed = true;
   }

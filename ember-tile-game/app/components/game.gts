@@ -138,15 +138,26 @@ export default class GameComponent extends Component {
             </div>
 
             <div class="hud-actions">
+              {{#if this.game.gameOver}}
+                <div class="hud-status" role="status">Game over</div>
+              {{/if}}
+
+              {{#unless this.game.gameOver}}
+                <button
+                  type="button"
+                  class="btn"
+                  {{on "click" this.hint}}
+                  disabled={{this.game.animating}}
+                >
+                  Hint
+                </button>
+              {{/unless}}
+
               <button
                 type="button"
-                class="btn"
-                {{on "click" this.hint}}
-                disabled={{this.game.animating}}
+                class={{if this.game.gameOver "btn btn-primary" "btn"}}
+                {{on "click" this.newGame}}
               >
-                Hint
-              </button>
-              <button type="button" class="btn" {{on "click" this.newGame}}>
                 New Game
               </button>
             </div>
@@ -154,7 +165,7 @@ export default class GameComponent extends Component {
         </div>
 
         {{#if this.game.showGameOver}}
-          <div class="modal-layer">
+          <div class="modal-layer modal-layer-top">
             <button
               type="button"
               class="modal-backdrop"
@@ -173,9 +184,15 @@ export default class GameComponent extends Component {
                 />
                 <button
                   type="button"
-                  class="btn"
+                  class="btn btn-primary"
                   {{on "click" this.newGame}}
                 >New Game</button>
+
+                <button
+                  type="button"
+                  class="btn"
+                  {{on "click" this.game.closeGameOver}}
+                >Admire game board</button>
                 <a
                   class="btn btn-link"
                   href={{this.shareUrl}}
