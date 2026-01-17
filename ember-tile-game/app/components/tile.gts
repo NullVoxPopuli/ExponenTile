@@ -66,7 +66,7 @@ export default class TileComponent extends Component<Args> {
         : 0;
 
     const spawnRows = this.game.spawnRowsByTileId[this.args.tile.id] ?? 0;
-    const spawnFromY = spawnRows > 0 ? Math.round(-spawnRows * step) : -80;
+    const spawnFromY = spawnRows > 0 ? Math.round(-spawnRows * step) : 0;
 
     const baseDuration = this.isDragging
       ? 0
@@ -76,6 +76,12 @@ export default class TileComponent extends Component<Args> {
 
     let duration = baseDuration;
 
+    const delay = this.isDragging
+      ? 0
+      : this.game.isPreviewTarget(this.args.position)
+        ? 0
+        : this.game.moveDelayByTileId[this.args.tile.id] ?? 0;
+
     if (!this.isDragging) {
       const maxDistance = maxDistanceFromMap(this.game.moveDistanceByTileId);
       const distance = this.game.moveDistanceByTileId[this.args.tile.id] ?? 0;
@@ -83,14 +89,15 @@ export default class TileComponent extends Component<Args> {
       if (maxDistance > 0) {
         // Use the service-selected gravity duration as the upper bound
         // (so step timing is long enough), but make smaller drops quicker.
-        const min = Math.max(220, Math.round(baseDuration * 0.55));
+        // Keep a relatively high floor so gravity is readable.
+        const min = Math.max(300, Math.round(baseDuration * 0.6));
         const distanceFactor = Math.min(1, distance / maxDistance);
 
         duration = Math.round(min + (baseDuration - min) * distanceFactor);
       }
     }
 
-    return `--pos-x:${posX}px;--pos-y:${posY}px;--spawn-from-y:${spawnFromY}px;--merge-x:${mergeX}px;--merge-y:${mergeY}px;--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;`;
+    return `--pos-x:${posX}px;--pos-y:${posY}px;--spawn-from-y:${spawnFromY}px;--merge-x:${mergeX}px;--merge-y:${mergeY}px;--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;--move-delay:${delay}ms;`;
   }
 
   get wrapperClass(): string {
@@ -100,7 +107,12 @@ export default class TileComponent extends Component<Args> {
         ? ' tile-wrap-merging'
         : '';
 
-    return `tile-wrap${dragging}${merging}`;
+    // Multi-step vertical moves are gravity/cascade. Add a class so CSS can
+    // make them feel more obvious than 1-step swaps.
+    const distance = this.game.moveDistanceByTileId[this.args.tile.id] ?? 0;
+    const falling = !this.isDragging && distance > 1 ? ' tile-wrap-falling' : '';
+
+    return `tile-wrap${dragging}${merging}${falling}`;
   }
 
   get classes(): string {
@@ -128,7 +140,11 @@ export default class TileComponent extends Component<Args> {
       ? ' tile-invalid'
       : '';
 
-    return `tile${selected}${removed}${mergeOut}${group}${groupHighlight}${target}${invalid}`;
+    const hint = this.game.hintTileIds.includes(this.args.tile.id)
+      ? ' tile-hint'
+      : '';
+
+    return `tile${selected}${removed}${mergeOut}${group}${groupHighlight}${target}${invalid}${hint}`;
   }
 
   get displayValue(): number {

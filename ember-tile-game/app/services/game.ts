@@ -27,12 +27,17 @@ export default class GameService extends Service {
    * Fixed default animation duration (settings UI removed).
    * Matches the previous "medium" feel.
    */
-  readonly animationDurationMs = 400;
+  // Keep gameplay snappy.
+  readonly animationDurationMs = 180;
 
   @tracked moveDurationMs = this.animationDurationMs;
-  @tracked moveEasing = 'cubic-bezier(0.2, 0, 0.1, 1)';
+  // A more human-readable easing (slower at the start than our previous curve)
+  // so long drops look like they "fall" instead of snapping.
+  @tracked moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
   @tracked moveDistanceByTileId: Record<number, number> = {};
   @tracked spawnRowsByTileId: Record<number, number> = {};
+  @tracked moveDelayByTileId: Record<number, number> = {};
+  @tracked maxMoveDelayMs = 0;
 
   readonly size = 8;
 
@@ -52,10 +57,13 @@ export default class GameService extends Service {
 
   @tracked invalidTileIds: number[] = [];
 
+  @tracked hintTileIds: number[] = [];
+
   @tracked mergePhase: 'none' | 'highlight' | 'collapse' = 'none';
 
   private animationToken = 0;
   private invalidToken = 0;
+  private hintToken = 0;
 
   private mergeTargetsCache = new WeakMap<Board, Set<number>>();
 
@@ -86,9 +94,12 @@ export default class GameService extends Service {
     this.animating = false;
     this.mergePhase = 'none';
     this.moveDurationMs = this.animationDurationMs;
-    this.moveEasing = 'cubic-bezier(0.2, 0, 0.1, 1)';
+    this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
     this.moveDistanceByTileId = {};
     this.spawnRowsByTileId = {};
+    this.moveDelayByTileId = {};
+    this.maxMoveDelayMs = 0;
+    this.clearHint();
     this.gameOverClosed = false;
     this.points = 0;
     this.moves = 0;
@@ -103,13 +114,46 @@ export default class GameService extends Service {
       return;
     }
 
-    void this.swapTiles(positions[0], positions[1]);
+    // Hint should not play the move; it only highlights it.
+    const [a, b] = positions;
+    const tileA = this.board[a.x]?.[a.y];
+    const tileB = this.board[b.x]?.[b.y];
+
+    if (!tileA || !tileB) {
+      return;
+    }
+
+    // Bump the token so any previous timeout/rAF won't clobber this hint.
+    const token = ++this.hintToken;
+
+    // Clear first so CSS animations can re-trigger even if the same hint
+    // is shown repeatedly.
+    this.hintTileIds = [];
+
+    requestAnimationFrame(() => {
+      if (token === this.hintToken) {
+        this.hintTileIds = [tileA.id, tileB.id];
+      }
+    });
+
+    window.setTimeout(() => {
+      if (token === this.hintToken) {
+        this.hintTileIds = [];
+      }
+    }, 1600);
+  }
+
+  private clearHint(): void {
+    this.hintToken++;
+    this.hintTileIds = [];
   }
 
   async swapTiles(a: Position, b: Position): Promise<void> {
     if (this.animating) {
       return;
     }
+
+    this.clearHint();
 
     const beforeBoard = this.board;
     const boards = swapTile(a, b, beforeBoard);
@@ -142,6 +186,8 @@ export default class GameService extends Service {
     this.mergePhase = 'none';
     this.moveDistanceByTileId = {};
     this.spawnRowsByTileId = {};
+    this.moveDelayByTileId = {};
+    this.maxMoveDelayMs = 0;
 
     let previousBoardStep: Board | undefined;
 
@@ -158,9 +204,13 @@ export default class GameService extends Service {
         ? getMovementInfo(previousBoardStep, step.board)
         : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
 
+      const delayInfo = getMoveDelayInfo(movementInfo.moveDistanceByTileId);
+
       this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
       this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
-      this.moveEasing = 'cubic-bezier(0.2, 0, 0.1, 1)';
+      this.moveDelayByTileId = delayInfo.delayByTileId;
+      this.maxMoveDelayMs = delayInfo.maxDelayMs;
+      this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
       this.moveDurationMs = getGravityDurationMs(
         this.animationDurationMs,
         movementInfo.maxDistanceSteps
@@ -176,10 +226,11 @@ export default class GameService extends Service {
 
         const stepDelayMs = getStepDelayMs(this.moveDurationMs);
 
+        // Give humans time to see the match before it collapses.
         const stillActiveAfterHighlight = await sleepChecked(
           token,
           this,
-          Math.max(90, Math.min(140, Math.round(stepDelayMs * 0.45)))
+          Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6)))
         );
 
         if (!stillActiveAfterHighlight) {
@@ -193,7 +244,7 @@ export default class GameService extends Service {
         const stillActiveAfterCollapse = await sleepChecked(
           token,
           this,
-          Math.max(120, Math.min(220, Math.round(stepDelayMs * 0.55)))
+          Math.max(160, Math.min(320, Math.round(stepDelayMs * 0.55)))
         );
 
         if (!stillActiveAfterCollapse) {
@@ -206,7 +257,7 @@ export default class GameService extends Service {
 
         // Small beat after the group clears, before gravity starts.
         // This helps match the React feel (clear → pause → cascade).
-        const stillActiveAfterPause = await sleepChecked(token, this, 90);
+        const stillActiveAfterPause = await sleepChecked(token, this, 140);
 
         if (!stillActiveAfterPause) {
           this.mergePhase = 'none';
@@ -218,8 +269,15 @@ export default class GameService extends Service {
         continue;
       }
 
-      if (index < boards.length - 1) {
-        const stepDelayMs = getStepDelayMs(this.moveDurationMs);
+      {
+        // Always wait at least one beat after applying a board step so the
+        // browser has time to animate transforms.
+        //
+        // Without this, the *final* step (which is frequently the gravity step
+        // with falling/spawning tiles) can appear to “snap” into place because
+        // we immediately reset animation state after the loop.
+        const stepDelayMs = getStepDelayMs(this.moveDurationMs, this.maxMoveDelayMs);
+
         const stillActive = await sleepChecked(token, this, stepDelayMs);
 
         if (!stillActive) {
@@ -239,9 +297,11 @@ export default class GameService extends Service {
     this.animating = false;
     this.mergePhase = 'none';
     this.moveDurationMs = this.animationDurationMs;
-    this.moveEasing = 'cubic-bezier(0.2, 0, 0.1, 1)';
+    this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
     this.moveDistanceByTileId = {};
     this.spawnRowsByTileId = {};
+    this.moveDelayByTileId = {};
+    this.maxMoveDelayMs = 0;
     this.persistProgress();
   }
 
@@ -302,6 +362,8 @@ export default class GameService extends Service {
       return;
     }
 
+    this.clearHint();
+
     if (!this.selectedFrom) {
       this.selectedFrom = position;
 
@@ -331,6 +393,8 @@ export default class GameService extends Service {
     if (this.animating) {
       return;
     }
+
+    this.clearHint();
 
     const offsetX = Math.abs(deltaX);
     const offsetY = Math.abs(deltaY);
@@ -365,6 +429,8 @@ export default class GameService extends Service {
     if (this.animating) {
       return;
     }
+
+    this.clearHint();
 
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
@@ -468,9 +534,9 @@ function boardHasRemovedTiles(board: Board): boolean {
   return false;
 }
 
-function getStepDelayMs(durationMs: number): number {
-  // Keep a small cushion so transforms can finish visibly.
-  return Math.max(120, durationMs) + 60;
+function getStepDelayMs(durationMs: number, extraDelayMs = 0): number {
+  // Small cushion so transforms can finish (but keep things fast).
+  return Math.max(60, durationMs) + Math.max(0, extraDelayMs) + 40;
 }
 
 function getGravityDurationMs(baseDurationMs: number, maxDistanceSteps: number): number {
@@ -481,10 +547,14 @@ function getGravityDurationMs(baseDurationMs: number, maxDistanceSteps: number):
   // Longer for bigger falls so nothing gets cut off mid-transition.
   // This value is also used to decide how long we wait before advancing to the
   // next board state, so it must cover the longest fall.
-  const base = Math.max(260, Math.round(baseDurationMs * 1.15));
-  const extra = Math.max(0, Math.round(maxDistanceSteps) * 90);
+  // Longer + less "front-loaded" than before so the cascade is obvious.
+  // Slightly longer for bigger falls, but still quick.
+  // This duration is also used to decide how long we wait before advancing to
+  // the next board state, so it must cover the longest fall.
+  const base = Math.max(220, Math.round(baseDurationMs * 1.05));
+  const extra = Math.max(0, Math.round(maxDistanceSteps) * 40);
 
-  return Math.min(1200, base + extra);
+  return Math.min(650, base + extra);
 }
 
 type MovementInfo = {
@@ -492,6 +562,34 @@ type MovementInfo = {
   moveDistanceByTileId: Record<number, number>;
   spawnRowsByTileId: Record<number, number>;
 };
+
+type MoveDelayInfo = {
+  maxDelayMs: number;
+  delayByTileId: Record<number, number>;
+};
+
+function getMoveDelayInfo(moveDistanceByTileId: Record<number, number>): MoveDelayInfo {
+  // Stagger by distance so it feels like a cascade: tiles that move 1 cell
+  // start immediately, tiles that move 2 start a beat later, etc.
+  const STAGGER_MS_PER_STEP = 25;
+
+  const delayByTileId: Record<number, number> = {};
+  let maxDelayMs = 0;
+
+  for (const [idString, distance] of Object.entries(moveDistanceByTileId)) {
+    if (distance <= 1) {
+      continue;
+    }
+
+    const id = Number(idString);
+    const delay = (distance - 1) * STAGGER_MS_PER_STEP;
+
+    delayByTileId[id] = delay;
+    maxDelayMs = Math.max(maxDelayMs, delay);
+  }
+
+  return { delayByTileId, maxDelayMs };
+}
 
 function getMovementInfo(previous: Board, next: Board): MovementInfo {
   const prevPosById = new Map<number, Position>();

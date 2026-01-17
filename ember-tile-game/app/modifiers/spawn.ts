@@ -17,18 +17,14 @@ export default modifier((element: HTMLElement) => {
     return;
   }
 
-  // Start slightly above and slide in.
-  const fromY = getComputedStyle(element)
-    .getPropertyValue('--spawn-from-y')
-    .trim();
-
-  element.style.setProperty('--spawn-y', fromY || '-80px');
-
-  // Force initial style application.
-  // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-  element.offsetHeight;
-
+  // IMPORTANT: don't mutate inline style properties here.
+  // The element's `style` attribute is controlled by Glimmer (`style={{...}}`),
+  // and rerenders can wipe out imperative `element.style.setProperty(...)`.
+  //
+  // Instead, we toggle a data attribute which CSS uses to animate the spawn.
+  // Default state (no data-spawned) renders offset by --spawn-from-y.
+  // Next frame, mark as spawned so it transitions to 0.
   requestAnimationFrame(() => {
-    element.style.setProperty('--spawn-y', '0px');
+    element.dataset.spawned = 'true';
   });
 });

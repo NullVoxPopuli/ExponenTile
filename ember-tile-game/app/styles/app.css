@@ -161,16 +161,31 @@ a {
   left: 14px;
   width: var(--tile-size);
   height: var(--tile-size);
+
+  --spawn-offset: var(--spawn-from-y, 0);
+
   will-change: transform;
   backface-visibility: hidden;
   transform: translate3d(var(--pos-x, 0), var(--pos-y, 0), 0)
     translate3d(var(--merge-x, 0), var(--merge-y, 0), 0)
     translate3d(var(--preview-x, 0), var(--preview-y, 0), 0)
     translate3d(var(--drag-x, 0), var(--drag-y, 0), 0)
-    translate3d(0, var(--spawn-y, 0), 0);
+    translate3d(0, var(--spawn-offset), 0)
+    scale(var(--tile-motion-scale, 1));
   transition:
     transform var(--move-duration, 120ms)
-      var(--move-ease, cubic-bezier(0.22, 1, 0.36, 1));
+      var(--move-ease, cubic-bezier(0.4, 0, 0.2, 1))
+      var(--move-delay, 0ms);
+}
+
+/* Keep falling tiles snappy like everything else. */
+.tile-wrap-falling {
+  --move-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --tile-motion-scale: 1;
+}
+
+.tile-wrap[data-spawned='true'] {
+  --spawn-offset: 0px;
 }
 
 .tile-wrap-dragging {
@@ -196,7 +211,8 @@ a {
   transition:
     transform 120ms ease,
     opacity 140ms ease,
-    box-shadow 200ms ease;
+    box-shadow 200ms ease,
+    filter 180ms ease;
   touch-action: none;
 }
 
@@ -213,7 +229,7 @@ a {
   }
 
   60% {
-    transform: scale(1.08);
+    transform: scale(1.12);
   }
 
   100% {
@@ -222,7 +238,7 @@ a {
 }
 
 .tile-group-highlight {
-  animation: tile-group-pulse 140ms ease-out;
+  animation: tile-group-pulse 260ms ease-out;
 }
 
 .tile-merge-target {
@@ -252,7 +268,7 @@ a {
 }
 
 .tile-bump {
-  animation: tile-merge 220ms ease-out;
+  animation: tile-merge 140ms ease-out;
 }
 
 .tile-removed {
@@ -294,7 +310,36 @@ a {
 }
 
 .tile-invalid {
-  animation: tile-invalid 260ms ease-in-out;
+  animation: tile-invalid 180ms ease-in-out;
+}
+
+@keyframes tile-hint {
+  0% {
+    box-shadow:
+      0 0 0 0 rgb(56 189 248 / 0%),
+      0 0 0 0 rgb(56 189 248 / 0%);
+    filter: saturate(1) brightness(1);
+  }
+
+  35% {
+    box-shadow:
+      0 0 0 4px rgb(56 189 248 / 70%),
+      0 0 28px rgb(56 189 248 / 35%);
+    filter: saturate(1.12) brightness(1.08);
+  }
+
+  100% {
+    box-shadow:
+      0 0 0 3px rgb(56 189 248 / 55%),
+      0 0 16px rgb(56 189 248 / 18%);
+    filter: saturate(1.05) brightness(1.03);
+  }
+}
+
+.tile-hint {
+  outline: 3px solid rgb(56 189 248 / 70%);
+  outline-offset: 2px;
+  animation: tile-hint 520ms ease-in-out 0ms 3;
 }
 
 .tile:hover {
@@ -303,6 +348,11 @@ a {
 
 .tile:active {
   transform: scale(0.98);
+}
+
+.tile-wrap-falling .tile:not(.tile-group, .tile-merge-target) {
+  box-shadow: 0 16px 26px rgb(0 0 0 / 42%);
+  filter: saturate(1.06) contrast(1.03);
 }
 
 .tile-selected {
