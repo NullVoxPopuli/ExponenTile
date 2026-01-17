@@ -91,6 +91,17 @@ export default class GameComponent extends Component {
       <TutorialModal />
 
       <div class={{this.shellClass}}>
+        <div class="board" style={{this.boardStyle}}>
+          {{#each this.cells key="key" as |cell|}}
+            <TileComponent
+              @tile={{cell.tile}}
+              @position={{cell.position}}
+              @selected={{cell.selected}}
+              @durationMs={{this.animationDurationMs}}
+            />
+          {{/each}}
+        </div>
+
         <div class="hud">
           <div class="hud-row">
             <div class="hud-scores">
@@ -122,17 +133,6 @@ export default class GameComponent extends Component {
               </button>
             </div>
           </div>
-        </div>
-
-        <div class="board" style={{this.boardStyle}}>
-          {{#each this.cells key="key" as |cell|}}
-            <TileComponent
-              @tile={{cell.tile}}
-              @position={{cell.position}}
-              @selected={{cell.selected}}
-              @durationMs={{this.animationDurationMs}}
-            />
-          {{/each}}
         </div>
 
         {{#if this.game.showGameOver}}

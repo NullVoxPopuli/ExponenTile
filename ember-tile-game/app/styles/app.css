@@ -110,26 +110,27 @@ a {
 
 .hud-scores {
   display: flex;
-  gap: 12px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
 .hud-score {
-  padding: 8px 10px;
+  padding: 6px 8px;
   border-radius: 12px;
   background: var(--panel-strong);
   border: 1px solid var(--border);
-  min-width: 120px;
+  min-width: 96px;
 }
 
 .hud-label {
-  font-size: 12px;
+  font-size: 11px;
   opacity: 0.85;
 }
 
 .hud-value {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
+  line-height: 1.1;
 }
 
 .hud-actions {
