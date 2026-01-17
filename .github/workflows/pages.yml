@@ -28,6 +28,9 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
         working-directory: ./ember-tile-game
+      - name: SPA fallback for deep links
+        run: cp dist/index.html dist/404.html
+        working-directory: ./ember-tile-game
       - uses: actions/upload-pages-artifact@v3
         with:
           path: './ember-tile-game/dist'
