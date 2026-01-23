@@ -39,9 +39,7 @@ export default class TutorialModal extends Component {
         ></button>
         <div class="modal tutorial" role="dialog" aria-modal="true">
           {{#if this.isStep0}}
-            <div class="tutorial-image">
-              <img src="/tutorial1.jpg" alt="How to play" />
-            </div>
+            <h2>How to play</h2>
             <p class="tutorial-text">
               Swap tiles to make a combination of three or more identical tiles.
             </p>
@@ -53,9 +51,7 @@ export default class TutorialModal extends Component {
           {{/if}}
 
           {{#if this.isStep1}}
-            <div class="tutorial-image">
-              <img src="/tutorial2.jpg" alt="How scoring works" />
-            </div>
+            <h2>How scoring works</h2>
             <p class="tutorial-text">
               The more tiles in the match, the higher the resulting tile will
               be.
