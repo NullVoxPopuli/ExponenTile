@@ -43,14 +43,16 @@
   }
 }
 
-html,
-body {
-  height: 100%;
+html {
+  height: 100vh;
+  overflow: hidden;
+  background: radial-gradient(1200px 800px at 20% 10%, #1f2937, var(--bg));
 }
 
 body {
+  height: 100vh;
   margin: 0;
-  background: radial-gradient(1200px 800px at 20% 10%, #1f2937, var(--bg));
+  overflow: hidden;
   color: var(--fg);
   font-family:
     ui-sans-serif,
@@ -89,7 +91,6 @@ a {
 }
 
 .page {
-  min-height: 100vh;
   padding: 16px;
 }
 
