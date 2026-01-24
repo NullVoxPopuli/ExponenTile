@@ -43,14 +43,16 @@
   }
 }
 
-html,
-body {
+html {
   height: 100vh;
   overflow: hidden;
+  background: var(--bg);
 }
 
 body {
+  height: 100vh;
   margin: 0;
+  overflow: hidden;
   background: radial-gradient(1200px 800px at 20% 10%, #1f2937, var(--bg));
   color: var(--fg);
   font-family:
