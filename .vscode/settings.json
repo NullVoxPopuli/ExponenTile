@@ -1,0 +1,15 @@
+{
+  "modelContextProtocol": {
+    "servers": {
+      "ember": {
+        "command": "npx",
+        "args": ["github:ember-tooling/ember-mcp"],
+        "disabled": false
+      },
+      "chrome-devtools": {
+        "command": "npx",
+        "args": ["-y", "chrome-devtools-mcp@latest"]
+      }
+    }
+  }
+}
