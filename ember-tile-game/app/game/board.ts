@@ -17,7 +17,7 @@ export type GameState = {
 
 export type BoardPoints = { board: Board; points: number };
 
-type MatchedTile = {
+export type MatchedTile = {
   newValue: number;
   matchedTiles: Position[];
   origin: Position;
@@ -27,7 +27,7 @@ type MatchedTile = {
 type NonMatch = { match: false };
 type MatchResult = MatchedTile | NonMatch;
 
-function tileAt(board: Board, { x, y }: Position): Tile {
+export function tileAt(board: Board, { x, y }: Position): Tile {
   const column = board[x];
 
   if (!column) {
@@ -43,7 +43,7 @@ function tileAt(board: Board, { x, y }: Position): Tile {
   return tile;
 }
 
-function setTile(board: Board, { x, y }: Position, tile: Tile): void {
+export function setTile(board: Board, { x, y }: Position, tile: Tile): void {
   const column = board[x];
 
   if (!column) {

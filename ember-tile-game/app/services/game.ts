@@ -4,14 +4,21 @@ import Service from '@ember/service';
 
 import {
   type Board,
+  type BoardPoints,
+  copyBoard,
   generateBoard,
   getPositionsThatAlmostMatch,
   isAdjacent,
   isGameOver,
+  type MatchedTile,
+  moveTilesDown,
   type Position,
   positionToNumber,
+  setTile,
   swapTile,
+  tileAt,
   type Tile,
+  uniqueNewMatches,
 } from '../game/board';
 import { boardContains2048Tile } from '../utils/sharing';
 import { sleep } from '../utils/sleep';
@@ -124,7 +131,7 @@ export default class GameService extends Service {
   }
 
   @action
-  randomizeTiles(): void {
+  async randomizeTiles(): Promise<void> {
     // Halve the points (rounded down)
     this.points = Math.floor(this.points / 2);
 
@@ -148,13 +155,16 @@ export default class GameService extends Service {
       allTiles[j] = temp!;
     }
 
-    // Place shuffled tiles back on the board
+    // Create a new board to trigger reactivity
+    const shuffledBoard = copyBoard(this.board);
+
+    // Place shuffled tiles back on the new board
     let tileIndex = 0;
-    for (let x = 0; x < this.board.length; x++) {
-      for (let y = 0; y < this.board[x]!.length; y++) {
-        if (this.board[x]![y] && !this.board[x]![y]!.removed) {
+    for (let x = 0; x < shuffledBoard.length; x++) {
+      for (let y = 0; y < shuffledBoard[x]!.length; y++) {
+        if (shuffledBoard[x]![y] && !shuffledBoard[x]![y]!.removed) {
           if (tileIndex < allTiles.length) {
-            this.board[x]![y] = allTiles[tileIndex]!;
+            shuffledBoard[x]![y] = allTiles[tileIndex]!;
             tileIndex++;
           }
         }
@@ -168,11 +178,160 @@ export default class GameService extends Service {
     // Close the game over modal
     this.gameOverClosed = true;
 
-    // Save the updated game state
-    saveGameState(this.board, this.points, this.moves);
-
     // Clear the hint
     this.clearHint();
+
+    // Process the shuffled board through the animation system
+    await this.processShuffledBoard(shuffledBoard);
+
+    // Save the updated game state
+    saveGameState(this.board, this.points, this.moves);
+  }
+
+  private async processShuffledBoard(shuffledBoard: Board): Promise<void> {
+    // Check if there are any matches on the shuffled board
+    const matches = uniqueNewMatches(shuffledBoard);
+
+    const token = ++this.animationToken;
+
+    this.animating = true;
+    this.mergePhase = 'none';
+    this.moveDistanceByTileId = {};
+    this.spawnRowsByTileId = {};
+    this.moveDelayByTileId = {};
+    this.maxMoveDelayMs = 0;
+
+    // Start with the shuffled board visible immediately
+    this.board = shuffledBoard;
+
+    if (matches.length === 0) {
+      // No matches, we're done
+      this.animating = false;
+
+      return;
+    }
+
+    // Build the sequence of board states to animate through
+    const boards: BoardPoints[] = [];
+    let currentBoard = shuffledBoard;
+    let currentMatches = matches;
+
+    while (currentMatches.length > 0) {
+      const newBoard = copyBoard(currentBoard);
+
+      // Apply the matched values
+      for (const match of currentMatches) {
+        const previous = tileAt(newBoard, match.origin);
+
+        setTile(newBoard, match.origin, { ...previous, value: match.newValue });
+      }
+
+      const [boardWithRemovedTiles, boardAfterGravity] = moveTilesDown(
+        currentMatches,
+        newBoard
+      );
+
+      boards.push(
+        {
+          board: newBoard,
+          points: currentMatches.reduce(
+            (acc, match) => Math.pow(2, match.newValue) + acc,
+            0
+          ),
+        },
+        { board: boardWithRemovedTiles, points: 0 },
+        { board: boardAfterGravity, points: 0 }
+      );
+
+      currentMatches = uniqueNewMatches(boardAfterGravity);
+      currentBoard = boardAfterGravity;
+    }
+
+    // Now animate through all the board states
+    let previousBoardStep: Board | undefined = shuffledBoard;
+
+    for (const [index, step] of boards.entries()) {
+      if (token !== this.animationToken) {
+        this.mergePhase = 'none';
+
+        return;
+      }
+
+      const hasRemovedTiles = boardHasRemovedTiles(step.board);
+
+      const movementInfo: MovementInfo = previousBoardStep
+        ? getMovementInfo(previousBoardStep, step.board)
+        : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+
+      const delayInfo = getMoveDelayInfo(movementInfo.moveDistanceByTileId);
+
+      this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
+      this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
+      this.moveDelayByTileId = delayInfo.delayByTileId;
+      this.maxMoveDelayMs = delayInfo.maxDelayMs;
+      this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
+      this.moveDurationMs = getGravityDurationMs(
+        this.animationDurationMs,
+        movementInfo.maxDistanceSteps
+      );
+
+      this.board = step.board;
+      this.points = this.points + step.points;
+
+      // Merge step: highlight the whole group, then collapse the group into the
+      // upgraded tile before continuing to gravity.
+      if (index < boards.length - 1 && hasRemovedTiles) {
+        this.mergePhase = 'highlight';
+
+        const stepDelayMs = getStepDelayMs(this.moveDurationMs);
+
+        // Give humans time to see the match before it collapses.
+        const stillActiveAfterHighlight = await sleepChecked(
+          token,
+          this,
+          Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6)))
+        );
+
+        if (!stillActiveAfterHighlight) {
+          this.mergePhase = 'none';
+
+          return;
+        }
+
+        this.mergePhase = 'collapse';
+
+        // Let the collapse animation play.
+        const stillActiveAfterCollapse = await sleepChecked(
+          token,
+          this,
+          Math.max(100, stepDelayMs * 0.2)
+        );
+
+        if (!stillActiveAfterCollapse) {
+          this.mergePhase = 'none';
+
+          return;
+        }
+      }
+
+      // Wait for the tiles to finish moving down if this step is a gravity step
+      if (this.maxMoveDelayMs > 0) {
+        const waitedForMovement = await sleepChecked(
+          token,
+          this,
+          this.moveDurationMs + this.maxMoveDelayMs + 50
+        );
+
+        if (!waitedForMovement) {
+          return;
+        }
+      }
+
+      previousBoardStep = step.board;
+    }
+
+    this.mergePhase = 'none';
+    this.animating = false;
   }
 
   hint(): void {
