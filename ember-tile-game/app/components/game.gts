@@ -253,8 +253,10 @@ export default class GameComponent extends Component {
   // computed styles
   get boardStyle(): string {
     const size = this.game.board.length;
+    const groupPulseDuration = Math.round(260 * this.game.animationSpeedMultiplier);
+    const mergeBumpDuration = Math.round(140 * this.game.animationSpeedMultiplier);
 
-    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;--move-ease:${this.game.moveEasing};`;
+    return `--board-size:${size};--move-duration:${this.animationDurationMs}ms;--move-ease:${this.game.moveEasing};--group-pulse-duration:${groupPulseDuration}ms;--merge-bump-duration:${mergeBumpDuration}ms;`;
   }
 
   get shellStyle(): string {

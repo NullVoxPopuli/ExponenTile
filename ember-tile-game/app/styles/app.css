@@ -285,7 +285,7 @@ a {
 }
 
 .tile-group-highlight {
-  animation: tile-group-pulse 260ms ease-out;
+  animation: tile-group-pulse var(--group-pulse-duration, 260ms) ease-out;
 }
 
 .tile-merge-target {
@@ -315,7 +315,7 @@ a {
 }
 
 .tile-bump {
-  animation: tile-merge 140ms ease-out;
+  animation: tile-merge var(--merge-bump-duration, 140ms) ease-out;
 }
 
 .tile-removed {
