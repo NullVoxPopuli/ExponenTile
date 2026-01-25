@@ -6,6 +6,7 @@ import {
   type Board,
   generateBoard,
   getPositionsThatAlmostMatch,
+  getRandomTileValue,
   isAdjacent,
   isGameOver,
   type Position,
@@ -18,9 +19,11 @@ import { sleep } from '../utils/sleep';
 import {
   getGameState,
   getHighscore,
+  getRandomizeCount,
   saveGameState,
   saveToPersistedState,
   setHighscore,
+  setRandomizeCount,
 } from '../utils/stored-state';
 
 export default class GameService extends Service {
@@ -55,6 +58,7 @@ export default class GameService extends Service {
   @tracked highscore = 0;
   @tracked debug = false;
   @tracked gameOverClosed = false;
+  @tracked randomizeCount = 0;
 
   @tracked invalidTileIds: number[] = [];
 
@@ -71,6 +75,7 @@ export default class GameService extends Service {
   constructor(owner: unknown) {
     super(owner as never);
     this.highscore = getHighscore();
+    this.randomizeCount = getRandomizeCount();
     this.loadSavedState();
   }
 
@@ -113,8 +118,40 @@ export default class GameService extends Service {
     this.gameOverClosed = false;
     this.points = 0;
     this.moves = 0;
+    this.randomizeCount = 0;
+    setRandomizeCount(0);
     this.selectedFrom = undefined;
     this.board = newBoard;
+  }
+
+  @action
+  randomizeTiles(): void {
+    // Halve the points (rounded down)
+    this.points = Math.floor(this.points / 2);
+
+    // Randomize all tiles on the board
+    for (let x = 0; x < this.board.length; x++) {
+      for (let y = 0; y < this.board[x]!.length; y++) {
+        const tile = this.board[x]![y];
+
+        if (tile && !tile.removed) {
+          tile.value = getRandomTileValue();
+        }
+      }
+    }
+
+    // Increment randomize count
+    this.randomizeCount++;
+    setRandomizeCount(this.randomizeCount);
+
+    // Close the game over modal
+    this.gameOverClosed = true;
+
+    // Save the updated game state
+    saveGameState(this.board, this.points, this.moves);
+
+    // Clear the hint
+    this.clearHint();
   }
 
   hint(): void {

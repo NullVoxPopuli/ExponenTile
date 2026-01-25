@@ -94,6 +94,14 @@ export default class GameComponent extends Component {
     return url.toString();
   }
 
+  get randomizeCost(): number {
+    return Math.floor(this.game.points / 2);
+  }
+
+  get showRandomizeCount(): boolean {
+    return this.game.randomizeCount > 0;
+  }
+
   @action
   newGame(): void {
     this.game.resetBoard();
@@ -162,6 +170,14 @@ export default class GameComponent extends Component {
               </button>
             </div>
           </div>
+
+          {{#if this.showRandomizeCount}}
+            <div class="hud-row">
+              <div class="hud-info">
+                Randomizations used: {{this.game.randomizeCount}}
+              </div>
+            </div>
+          {{/if}}
         </div>
 
         {{#if this.game.showGameOver}}
@@ -187,6 +203,12 @@ export default class GameComponent extends Component {
                   class="btn"
                   {{on "click" this.game.closeGameOver}}
                 >Admire game board</button>
+
+                <button
+                  type="button"
+                  class="btn"
+                  {{on "click" this.game.randomizeTiles}}
+                >Randomize Tiles (-{{this.randomizeCost}} points)</button>
 
                 <hr class="modal-separator" />
 
