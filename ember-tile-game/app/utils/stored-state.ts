@@ -74,3 +74,13 @@ export function getGameState(): GameState | undefined {
     return undefined;
   }
 }
+
+export function setRandomizeCount(count: number): void {
+  saveToPersistedState({ key: 'randomizeCount', value: count.toString() });
+}
+
+export function getRandomizeCount(): number {
+  const countString = getFromPersistedState({ key: 'randomizeCount' });
+
+  return parseInt(countString ?? '0', 10);
+}
