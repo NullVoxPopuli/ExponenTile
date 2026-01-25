@@ -286,35 +286,60 @@ export function swapTile(
   const matchedTiles: MatchedTile[] = [];
 
   if (fromMatchedTile.match) {
-    const previous = tileAt(newBoard, from);
-
-    setTile(newBoard, from, { ...previous, value: fromMatchedTile.newValue });
     matchedTiles.push(fromMatchedTile);
   }
 
   if (toMatchedTile.match) {
-    const previous = tileAt(newBoard, to);
-
-    setTile(newBoard, to, { ...previous, value: toMatchedTile.newValue });
     matchedTiles.push(toMatchedTile);
   }
 
-  const [boardWithRemovedTiles, boardAfterGravity] = moveTilesDown(
+  // First, create the board with removed tiles (old values still)
+  const boardWithRemovedTilesOldValues = copyBoard(newBoard);
+
+  for (const match of matchedTiles) {
+    for (const positionToRemove of match.matchedTiles) {
+      const previous = tileAt(boardWithRemovedTilesOldValues, positionToRemove);
+      setTile(boardWithRemovedTilesOldValues, positionToRemove, {
+        ...previous,
+        removed: true,
+        mergedTo: match.origin,
+      });
+    }
+  }
+
+  // Create a board with upgraded values for the merge targets
+  // Start from the board with removed tiles so they stay removed
+  const boardWithUpgradedValues = copyBoard(boardWithRemovedTilesOldValues);
+
+  if (fromMatchedTile.match) {
+    const previous = tileAt(boardWithUpgradedValues, from);
+    setTile(boardWithUpgradedValues, from, { ...previous, value: fromMatchedTile.newValue });
+  }
+
+  if (toMatchedTile.match) {
+    const previous = tileAt(boardWithUpgradedValues, to);
+    setTile(boardWithUpgradedValues, to, { ...previous, value: toMatchedTile.newValue });
+  }
+
+  // Apply gravity starting from the upgraded board
+  const [, boardAfterGravity] = moveTilesDown(
     matchedTiles,
-    newBoard
+    boardWithUpgradedValues
   );
+
   const boardAfterCombos = findAndDoCombos(boardAfterGravity);
 
   return [
     { board: swappedBoard, points: 0 },
+    { board: newBoard, points: 0 },
+    { board: boardWithRemovedTilesOldValues, points: 0 },
     {
-      board: newBoard,
+      board: boardWithUpgradedValues,
       points: matchedTiles.reduce(
         (acc, matchedTile) => Math.pow(2, matchedTile.newValue) + acc,
         0
       ),
     },
-    { board: boardWithRemovedTiles, points: 0 },
     { board: boardAfterGravity, points: 0 },
     ...boardAfterCombos,
   ];
@@ -393,27 +418,46 @@ function findAndDoCombos(board: Board): BoardPoints[] {
   while (matches.length > 0) {
     const newBoard = copyBoard(previousBoard);
 
-    for (const match of matches) {
-      const previous = tileAt(newBoard, match.origin);
+    // First, create the board with removed tiles (old values still)
+    const boardWithRemovedTilesOldValues = copyBoard(newBoard);
 
-      setTile(newBoard, match.origin, { ...previous, value: match.newValue });
+    for (const match of matches) {
+      for (const positionToRemove of match.matchedTiles) {
+        const previous = tileAt(boardWithRemovedTilesOldValues, positionToRemove);
+        setTile(boardWithRemovedTilesOldValues, positionToRemove, {
+          ...previous,
+          removed: true,
+          mergedTo: match.origin,
+        });
+      }
     }
 
-    const [boardWithRemovedTiles, boardAfterGravity] = moveTilesDown(
+    // Create a board with upgraded values for the merge targets
+    // Start from the board with removed tiles so they stay removed
+    const boardWithUpgradedValues = copyBoard(boardWithRemovedTilesOldValues);
+
+    for (const match of matches) {
+      const previous = tileAt(boardWithUpgradedValues, match.origin);
+      setTile(boardWithUpgradedValues, match.origin, { ...previous, value: match.newValue });
+    }
+
+    // Apply gravity starting from the upgraded board
+    const [, boardAfterGravity] = moveTilesDown(
       matches,
-      newBoard
+      boardWithUpgradedValues
     );
 
     result = [
       ...result,
+      { board: newBoard, points: 0 },
+      { board: boardWithRemovedTilesOldValues, points: 0 },
       {
-        board: newBoard,
+        board: boardWithUpgradedValues,
         points: matches.reduce(
           (acc, match) => Math.pow(2, match.newValue) + acc,
           0
         ),
       },
-      { board: boardWithRemovedTiles, points: 0 },
       { board: boardAfterGravity, points: 0 },
     ];
 

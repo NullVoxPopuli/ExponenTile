@@ -224,27 +224,46 @@ export default class GameService extends Service {
     while (currentMatches.length > 0) {
       const newBoard = copyBoard(currentBoard);
 
-      // Apply the matched values
-      for (const match of currentMatches) {
-        const previous = tileAt(newBoard, match.origin);
+      // First, create the board with removed tiles (old values still)
+      const boardWithRemovedTilesOldValues = copyBoard(newBoard);
 
-        setTile(newBoard, match.origin, { ...previous, value: match.newValue });
+      for (const match of currentMatches) {
+        for (const positionToRemove of match.matchedTiles) {
+          const previous = tileAt(boardWithRemovedTilesOldValues, positionToRemove);
+
+          setTile(boardWithRemovedTilesOldValues, positionToRemove, {
+            ...previous,
+            removed: true,
+            mergedTo: match.origin,
+          });
+        }
       }
 
-      const [boardWithRemovedTiles, boardAfterGravity] = moveTilesDown(
+      // Create a board with upgraded values for the merge targets
+      const boardWithUpgradedValues = copyBoard(newBoard);
+
+      for (const match of currentMatches) {
+        const previous = tileAt(boardWithUpgradedValues, match.origin);
+
+        setTile(boardWithUpgradedValues, match.origin, { ...previous, value: match.newValue });
+      }
+
+      // Apply gravity starting from the upgraded board
+      const [, boardAfterGravity] = moveTilesDown(
         currentMatches,
-        newBoard
+        boardWithUpgradedValues
       );
 
       boards.push(
+        { board: newBoard, points: 0 },
+        { board: boardWithRemovedTilesOldValues, points: 0 },
         {
-          board: newBoard,
+          board: boardWithUpgradedValues,
           points: currentMatches.reduce(
             (acc, match) => Math.pow(2, match.newValue) + acc,
             0
           ),
         },
-        { board: boardWithRemovedTiles, points: 0 },
         { board: boardAfterGravity, points: 0 }
       );
 
@@ -254,6 +273,8 @@ export default class GameService extends Service {
 
     // Now animate through all the board states
     let previousBoardStep: Board | undefined = shuffledBoard;
+    let boardForMovementCalc: Board | undefined = shuffledBoard;
+    let mergeTargetTileIds: Set<number> = new Set();
 
     for (const [index, step] of boards.entries()) {
       if (token !== this.animationToken) {
@@ -264,58 +285,138 @@ export default class GameService extends Service {
 
       const hasRemovedTiles = boardHasRemovedTiles(step.board);
 
-      const movementInfo: MovementInfo = previousBoardStep
-        ? getMovementInfo(previousBoardStep, step.board)
-        : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+      // Check if this is the value upgrade step (has removed tiles + points awarded)
+      const isValueUpgrade = hasRemovedTiles && step.points > 0;
 
-      const delayInfo = getMoveDelayInfo(movementInfo.moveDistanceByTileId);
+      // Track merge target tiles when we see the value upgrade
+      if (isValueUpgrade) {
+        mergeTargetTileIds = this.getMergeTargetsForBoard(step.board);
+      }
 
-      this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
-      this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
-      this.moveDelayByTileId = delayInfo.delayByTileId;
-      this.maxMoveDelayMs = delayInfo.maxDelayMs;
-      this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
-      this.moveDurationMs = getGravityDurationMs(
-        this.animationDurationMs,
-        movementInfo.maxDistanceSteps
+      // Check if this is the first board after merge (gravity following upgrade)
+      const isPostMergeGravity = mergeTargetTileIds.size > 0 && !hasRemovedTiles;
+
+      // Don't calculate or apply movement for post-merge gravity yet
+      // We'll handle it after waiting for the merge target animation to complete
+      const movementInfo: MovementInfo =
+        boardForMovementCalc && !isValueUpgrade && !isPostMergeGravity
+          ? getMovementInfo(boardForMovementCalc, step.board)
+          : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+
+      const delayInfo = getMoveDelayInfo(
+        movementInfo.moveDistanceByTileId,
+        isPostMergeGravity ? mergeTargetTileIds : undefined
       );
 
-      this.board = step.board;
-      this.points = this.points + step.points;
+      // Clear merge target tracking after applying the delay
+      if (isPostMergeGravity) {
+        mergeTargetTileIds = new Set();
+      }
 
-      // Merge step: highlight the whole group, then collapse the group into the
-      // upgraded tile before continuing to gravity.
-      if (index < boards.length - 1 && hasRemovedTiles) {
-        this.mergePhase = 'highlight';
+      // If this is post-merge gravity, wait BEFORE setting board and calculating movement
+      if (isPostMergeGravity) {
+        // Wait for merge target bump animation to complete
+        const waitedForMergeAnimation = await sleepChecked(token, this, 200 * this.animationSpeedMultiplier);
 
-        const stepDelayMs = getStepDelayMs(this.moveDurationMs);
-
-        // Give humans time to see the match before it collapses.
-        const stillActiveAfterHighlight = await sleepChecked(
-          token,
-          this,
-          Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6))) * this.animationSpeedMultiplier
-        );
-
-        if (!stillActiveAfterHighlight) {
+        if (!waitedForMergeAnimation) {
           this.mergePhase = 'none';
 
           return;
         }
 
-        this.mergePhase = 'collapse';
+        // Now calculate the gravity movement
+        const gravityMovement = boardForMovementCalc
+          ? getMovementInfo(boardForMovementCalc, step.board)
+          : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
 
-        // Let the collapse animation play.
-        const stillActiveAfterCollapse = await sleepChecked(
-          token,
-          this,
-          Math.max(100, stepDelayMs * 0.2) * this.animationSpeedMultiplier
+        const gravityDelayInfo = getMoveDelayInfo(gravityMovement.moveDistanceByTileId);
+
+        this.moveDistanceByTileId = gravityMovement.moveDistanceByTileId;
+        this.spawnRowsByTileId = gravityMovement.spawnRowsByTileId;
+        this.moveDelayByTileId = gravityDelayInfo.delayByTileId;
+        this.maxMoveDelayMs = gravityDelayInfo.maxDelayMs;
+        this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
+        this.moveDurationMs = getGravityDurationMs(
+          this.animationDurationMs,
+          gravityMovement.maxDistanceSteps
         );
 
-        if (!stillActiveAfterCollapse) {
+        // NOW set the board to trigger the gravity animation
+        this.board = step.board;
+        this.points = this.points + step.points;
+
+        boardForMovementCalc = step.board;
+      } else {
+        this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
+        this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
+        this.moveDelayByTileId = delayInfo.delayByTileId;
+        this.maxMoveDelayMs = delayInfo.maxDelayMs;
+        this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
+        this.moveDurationMs = getGravityDurationMs(
+          this.animationDurationMs,
+          movementInfo.maxDistanceSteps
+        );
+
+        this.board = step.board;
+        this.points = this.points + step.points;
+      }
+
+      // Merge animation sequence:
+      // When we see removed tiles with no points, it's the highlight/collapse phase
+      // When we see removed tiles with points, it's the value upgrade (after collapse)
+      if (index < boards.length - 1 && hasRemovedTiles) {
+        if (step.points === 0) {
+          // Start of merge: highlight the group
+          this.mergePhase = 'highlight';
+
+          const stepDelayMs = getStepDelayMs(this.moveDurationMs);
+
+          // Give humans time to see the match before it collapses.
+          const stillActiveAfterHighlight = await sleepChecked(
+            token,
+            this,
+            Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6))) * this.animationSpeedMultiplier
+          );
+
+          if (!stillActiveAfterHighlight) {
+            this.mergePhase = 'none';
+
+            return;
+          }
+
+          this.mergePhase = 'collapse';
+
+          // Let the collapse animation play.
+          const stillActiveAfterCollapse = await sleepChecked(
+            token,
+            this,
+            Math.max(100, stepDelayMs * 0.2) * this.animationSpeedMultiplier
+          );
+
+          if (!stillActiveAfterCollapse) {
+            this.mergePhase = 'none';
+
+            return;
+          }
+
+
+          boardForMovementCalc = step.board;
+          continue;
+        } else {
+          // Value has been upgraded, end the merge phase
           this.mergePhase = 'none';
 
-          return;
+          // Small beat to see the new value
+          const stillActiveAfterUpgrade = await sleepChecked(token, this, 350 * this.animationSpeedMultiplier);
+
+          if (!stillActiveAfterUpgrade) {
+            return;
+          }
+
+          // Don't update boardForMovementCalc - we want the next step (gravity)
+          // to calculate movement from the previous board (with removed tiles), not this one
+
+          continue;
         }
       }
 
@@ -332,7 +433,8 @@ export default class GameService extends Service {
         }
       }
 
-      previousBoardStep = step.board;
+
+      boardForMovementCalc = step.board;
     }
 
     this.mergePhase = 'none';
@@ -480,7 +582,8 @@ export default class GameService extends Service {
     this.moveDelayByTileId = {};
     this.maxMoveDelayMs = 0;
 
-    let previousBoardStep: Board | undefined;
+    let boardForMovementCalc: Board | undefined;
+    let mergeTargetTileIds: Set<number> = new Set();
 
     for (const [index, step] of boards.entries()) {
       if (token !== this.animationToken) {
@@ -491,73 +594,141 @@ export default class GameService extends Service {
 
       const hasRemovedTiles = boardHasRemovedTiles(step.board);
 
-      const movementInfo: MovementInfo = previousBoardStep
-        ? getMovementInfo(previousBoardStep, step.board)
-        : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+      // Check if this is the value upgrade step (has removed tiles + points awarded)
+      const isValueUpgrade = hasRemovedTiles && step.points > 0;
 
-      const delayInfo = getMoveDelayInfo(movementInfo.moveDistanceByTileId);
+      // Track merge target tiles when we see the value upgrade
+      if (isValueUpgrade) {
+        mergeTargetTileIds = this.getMergeTargetsForBoard(step.board);
+      }
 
-      this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
-      this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
-      this.moveDelayByTileId = delayInfo.delayByTileId;
-      this.maxMoveDelayMs = delayInfo.maxDelayMs;
-      this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
-      this.moveDurationMs = getGravityDurationMs(
-        this.animationDurationMs,
-        movementInfo.maxDistanceSteps
+      // Check if this is the first board after merge (gravity following upgrade)
+      const isPostMergeGravity = mergeTargetTileIds.size > 0 && !hasRemovedTiles;
+
+      // Don't calculate or apply movement for post-merge gravity yet
+      // We'll handle it after waiting for the merge target animation to complete
+      const movementInfo: MovementInfo =
+        boardForMovementCalc && !isValueUpgrade && !isPostMergeGravity
+          ? getMovementInfo(boardForMovementCalc, step.board)
+          : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+
+      const delayInfo = getMoveDelayInfo(
+        movementInfo.moveDistanceByTileId,
+        isPostMergeGravity ? mergeTargetTileIds : undefined
       );
 
-      this.board = step.board;
-      this.points = this.points + step.points;
+      // Clear merge target tracking after applying the delay
+      if (isPostMergeGravity) {
+        mergeTargetTileIds = new Set();
+      }
 
-      // Merge step: highlight the whole group, then collapse the group into the
-      // upgraded tile before continuing to gravity.
+      // If this is post-merge gravity, wait BEFORE setting board and calculating movement
+      if (isPostMergeGravity) {
+        // Wait for merge target bump animation to complete
+        const waitedForMergeAnimation = await sleepChecked(token, this, 200 * this.animationSpeedMultiplier);
+
+        if (!waitedForMergeAnimation) {
+          this.mergePhase = 'none';
+
+          return;
+        }
+
+        // Now calculate the gravity movement
+        const gravityMovement = boardForMovementCalc
+          ? getMovementInfo(boardForMovementCalc, step.board)
+          : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+
+        const gravityDelayInfo = getMoveDelayInfo(gravityMovement.moveDistanceByTileId);
+
+        this.moveDistanceByTileId = gravityMovement.moveDistanceByTileId;
+        this.spawnRowsByTileId = gravityMovement.spawnRowsByTileId;
+        this.moveDelayByTileId = gravityDelayInfo.delayByTileId;
+        this.maxMoveDelayMs = gravityDelayInfo.maxDelayMs;
+        this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
+        this.moveDurationMs = getGravityDurationMs(
+          this.animationDurationMs,
+          gravityMovement.maxDistanceSteps
+        );
+
+        // NOW set the board to trigger the gravity animation
+        this.board = step.board;
+        this.points = this.points + step.points;
+
+        boardForMovementCalc = step.board;
+      } else {
+        this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
+        this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
+        this.moveDelayByTileId = delayInfo.delayByTileId;
+        this.maxMoveDelayMs = delayInfo.maxDelayMs;
+        this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
+        this.moveDurationMs = getGravityDurationMs(
+          this.animationDurationMs,
+          movementInfo.maxDistanceSteps
+        );
+
+        this.board = step.board;
+        this.points = this.points + step.points;
+      }
+
+      // Merge animation sequence:
+      // When we see removed tiles with no points, it's the highlight/collapse phase
+      // When we see removed tiles with points, it's the value upgrade (after collapse)
       if (index < boards.length - 1 && hasRemovedTiles) {
-        this.mergePhase = 'highlight';
+        if (step.points === 0) {
+          // Start of merge: highlight the group
+          this.mergePhase = 'highlight';
 
-        const stepDelayMs = getStepDelayMs(this.moveDurationMs);
+          const stepDelayMs = getStepDelayMs(this.moveDurationMs);
 
-        // Give humans time to see the match before it collapses.
-        const stillActiveAfterHighlight = await sleepChecked(
-          token,
-          this,
-          Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6))) * this.animationSpeedMultiplier
-        );
+          // Give humans time to see the match before it collapses.
+          const stillActiveAfterHighlight = await sleepChecked(
+            token,
+            this,
+            Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6))) * this.animationSpeedMultiplier
+          );
 
-        if (!stillActiveAfterHighlight) {
+          if (!stillActiveAfterHighlight) {
+            this.mergePhase = 'none';
+
+            return;
+          }
+
+          this.mergePhase = 'collapse';
+
+          // Let the tiles slide together
+          const stillActiveAfterCollapse = await sleepChecked(
+            token,
+            this,
+            Math.max(160, Math.min(320, Math.round(stepDelayMs * 0.55))) * this.animationSpeedMultiplier
+          );
+
+          if (!stillActiveAfterCollapse) {
+            this.mergePhase = 'none';
+
+            return;
+          }
+
+
+          boardForMovementCalc = step.board;
+          continue;
+        } else {
+          // Value has been upgraded, end the merge phase
           this.mergePhase = 'none';
 
-          return;
+          // Small beat to see the new value before gravity starts
+          const stillActiveAfterUpgrade = await sleepChecked(token, this, 350 * this.animationSpeedMultiplier);
+
+          if (!stillActiveAfterUpgrade) {
+            this.mergePhase = 'none';
+
+            return;
+          }
+
+          // Don't update boardForMovementCalc - we want the next step (gravity)
+          // to calculate movement from the previous board (with removed tiles), not this one
+
+          continue;
         }
-
-        this.mergePhase = 'collapse';
-
-        const stillActiveAfterCollapse = await sleepChecked(
-          token,
-          this,
-          Math.max(160, Math.min(320, Math.round(stepDelayMs * 0.55))) * this.animationSpeedMultiplier
-        );
-
-        if (!stillActiveAfterCollapse) {
-          this.mergePhase = 'none';
-
-          return;
-        }
-
-        this.mergePhase = 'none';
-
-        // Small beat after the group clears, before gravity starts.
-        // This helps match the React feel (clear → pause → cascade).
-        const stillActiveAfterPause = await sleepChecked(token, this, 140 * this.animationSpeedMultiplier);
-
-        if (!stillActiveAfterPause) {
-          this.mergePhase = 'none';
-
-          return;
-        }
-
-        previousBoardStep = step.board;
-        continue;
       }
 
       {
@@ -578,7 +749,8 @@ export default class GameService extends Service {
         }
       }
 
-      previousBoardStep = step.board;
+
+      boardForMovementCalc = step.board;
     }
 
     if (boardContains2048Tile(this.board)) {
@@ -859,24 +1031,41 @@ type MoveDelayInfo = {
   delayByTileId: Record<number, number>;
 };
 
-function getMoveDelayInfo(moveDistanceByTileId: Record<number, number>): MoveDelayInfo {
+function getMoveDelayInfo(
+  moveDistanceByTileId: Record<number, number>,
+  mergeTargetTileIds?: Set<number>
+): MoveDelayInfo {
   // Stagger by distance so it feels like a cascade: tiles that move 1 cell
   // start immediately, tiles that move 2 start a beat later, etc.
   const STAGGER_MS_PER_STEP = 25;
+
+  // If we have merge targets, delay all non-merge tiles so merge tiles move first
+  const MERGE_TARGET_PRIORITY_DELAY_MS = 400;
 
   const delayByTileId: Record<number, number> = {};
   let maxDelayMs = 0;
 
   for (const [idString, distance] of Object.entries(moveDistanceByTileId)) {
-    if (distance <= 1) {
-      continue;
+    const id = Number(idString);
+    const isMergeTarget = mergeTargetTileIds?.has(id) ?? false;
+
+    let delay = 0;
+
+    // Merge targets move first with no delay
+    // All other tiles wait for merge target to finish, then cascade
+    if (!isMergeTarget && mergeTargetTileIds && mergeTargetTileIds.size > 0) {
+      delay = MERGE_TARGET_PRIORITY_DELAY_MS;
     }
 
-    const id = Number(idString);
-    const delay = (distance - 1) * STAGGER_MS_PER_STEP;
+    // Add cascade delay based on distance
+    if (distance > 1) {
+      delay += (distance - 1) * STAGGER_MS_PER_STEP;
+    }
 
-    delayByTileId[id] = delay;
-    maxDelayMs = Math.max(maxDelayMs, delay);
+    if (delay > 0) {
+      delayByTileId[id] = delay;
+      maxDelayMs = Math.max(maxDelayMs, delay);
+    }
   }
 
   return { delayByTileId, maxDelayMs };
