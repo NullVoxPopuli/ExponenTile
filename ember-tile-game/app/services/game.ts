@@ -65,6 +65,8 @@ export default class GameService extends Service {
   @tracked debug = false;
   @tracked gameOverClosed = false;
   @tracked randomizeCount = 0;
+  @tracked skipAnimationDelays = false;
+  @tracked animationSpeedMultiplier = 1;
 
   @tracked invalidTileIds: number[] = [];
 
@@ -292,7 +294,7 @@ export default class GameService extends Service {
         const stillActiveAfterHighlight = await sleepChecked(
           token,
           this,
-          Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6)))
+          Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6))) * this.animationSpeedMultiplier
         );
 
         if (!stillActiveAfterHighlight) {
@@ -307,7 +309,7 @@ export default class GameService extends Service {
         const stillActiveAfterCollapse = await sleepChecked(
           token,
           this,
-          Math.max(100, stepDelayMs * 0.2)
+          Math.max(100, stepDelayMs * 0.2) * this.animationSpeedMultiplier
         );
 
         if (!stillActiveAfterCollapse) {
@@ -396,6 +398,48 @@ export default class GameService extends Service {
     void this.swapTiles(a, b);
   }
 
+  @action
+  async autoPlayToGameOver(): Promise<void> {
+    // Store the original animation duration
+    const originalMoveDurationMs = this.moveDurationMs;
+    const originalAnimationSpeedMultiplier = this.animationSpeedMultiplier;
+
+    // Speed up animations for fast playback
+    this.moveDurationMs = 1;
+    this.animationSpeedMultiplier = 0.1;
+
+    try {
+      // Keep playing moves until the game is over
+      while (!this.gameOver) {
+        // If currently animating, wait for it to complete
+        if (this.animating) {
+          await sleep(10);
+          continue;
+        }
+
+        const positions = getPositionsThatAlmostMatch(this.board);
+
+        if (!positions) {
+          // No valid moves left, game is over
+          break;
+        }
+
+        const [a, b] = positions;
+
+        this.clearHint();
+        await this.swapTiles(a, b);
+      }
+    } finally {
+      // Always restore original settings, even if interrupted
+      this.moveDurationMs = originalMoveDurationMs;
+      this.animationSpeedMultiplier = originalAnimationSpeedMultiplier;
+
+      // Wait for the browser to render the final game over state
+      // before completing the function
+      await sleep(50);
+    }
+  }
+
   async swapTiles(a: Position, b: Position): Promise<void> {
     if (this.animating) {
       return;
@@ -478,7 +522,7 @@ export default class GameService extends Service {
         const stillActiveAfterHighlight = await sleepChecked(
           token,
           this,
-          Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6)))
+          Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6))) * this.animationSpeedMultiplier
         );
 
         if (!stillActiveAfterHighlight) {
@@ -492,7 +536,7 @@ export default class GameService extends Service {
         const stillActiveAfterCollapse = await sleepChecked(
           token,
           this,
-          Math.max(160, Math.min(320, Math.round(stepDelayMs * 0.55)))
+          Math.max(160, Math.min(320, Math.round(stepDelayMs * 0.55))) * this.animationSpeedMultiplier
         );
 
         if (!stillActiveAfterCollapse) {
@@ -505,7 +549,7 @@ export default class GameService extends Service {
 
         // Small beat after the group clears, before gravity starts.
         // This helps match the React feel (clear → pause → cascade).
-        const stillActiveAfterPause = await sleepChecked(token, this, 140);
+        const stillActiveAfterPause = await sleepChecked(token, this, 140 * this.animationSpeedMultiplier);
 
         if (!stillActiveAfterPause) {
           this.mergePhase = 'none';
@@ -924,7 +968,9 @@ async function sleepChecked(
   game: GameService,
   ms: number
 ): Promise<boolean> {
-  await sleep(ms);
+  if (!game.skipAnimationDelays) {
+    await sleep(ms);
+  }
 
   return game.isTokenActive(token);
 }

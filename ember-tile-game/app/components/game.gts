@@ -121,6 +121,12 @@ export default class GameComponent extends Component {
       event.preventDefault();
       this.game.autoSwap();
     }
+
+    // Secret hotkey: Ctrl+K to auto-play until game over
+    if (event instanceof KeyboardEvent && event.ctrlKey && event.key === 'k') {
+      event.preventDefault();
+      void this.game.autoPlayToGameOver();
+    }
   }
 
   <template>
