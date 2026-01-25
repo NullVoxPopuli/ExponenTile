@@ -6,7 +6,6 @@ import {
   type Board,
   generateBoard,
   getPositionsThatAlmostMatch,
-  getRandomTileValue,
   isAdjacent,
   isGameOver,
   type Position,
@@ -129,13 +128,31 @@ export default class GameService extends Service {
     // Halve the points (rounded down)
     this.points = Math.floor(this.points / 2);
 
-    // Randomize all tiles on the board
+    // Collect all tiles from the board
+    const allTiles: Tile[] = [];
     for (let x = 0; x < this.board.length; x++) {
       for (let y = 0; y < this.board[x]!.length; y++) {
         const tile = this.board[x]![y];
 
         if (tile && !tile.removed) {
-          tile.value = getRandomTileValue();
+          allTiles.push(tile);
+        }
+      }
+    }
+
+    // Shuffle the tiles using Fisher-Yates algorithm
+    for (let i = allTiles.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [allTiles[i], allTiles[j]] = [allTiles[j]!, allTiles[i]!];
+    }
+
+    // Place shuffled tiles back on the board
+    let tileIndex = 0;
+    for (let x = 0; x < this.board.length; x++) {
+      for (let y = 0; y < this.board[x]!.length; y++) {
+        if (this.board[x]![y] && !this.board[x]![y]!.removed) {
+          this.board[x]![y] = allTiles[tileIndex]!;
+          tileIndex++;
         }
       }
     }

@@ -57,7 +57,7 @@ function getRandomTileId(): number {
   return Math.floor(Math.random() * Number.MAX_SAFE_INTEGER);
 }
 
-export function getRandomTileValue(): number {
+function getRandomTileValue(): number {
   return Math.floor(Math.random() * 4) + 1;
 }
 
