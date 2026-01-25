@@ -9,6 +9,7 @@ import config from 'ember-tile-game/config/environment';
 import ShareButton from '#components/share-button';
 import TileComponent from '#components/tile';
 import TutorialModal from '#components/tutorial-modal';
+import onWindow from '#modifiers/on-window';
 
 import { encodeStateInURL } from '../utils/sharing';
 
@@ -114,16 +115,16 @@ export default class GameComponent extends Component {
   }
 
   @action
-  handleKeyDown(event: KeyboardEvent): void {
+  handleKeyDown(event: Event): void {
     // Secret hotkey: Ctrl+J to auto-swap tiles
-    if (event.ctrlKey && event.key === 'j') {
+    if (event instanceof KeyboardEvent && event.ctrlKey && event.key === 'j') {
       event.preventDefault();
       this.game.autoSwap();
     }
   }
 
   <template>
-    <div class="app-shell" {{on "keydown" this.handleKeyDown}}>
+    <div class="app-shell" {{onWindow "keydown" this.handleKeyDown}}>
       <TutorialModal />
 
       <div class={{this.shellClass}} style={{this.shellStyle}}>

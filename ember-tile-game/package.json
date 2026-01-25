@@ -10,7 +10,8 @@
   "imports": {
     "#app/*": "./app/*",
     "#config": "./app/config/environment",
-    "#components/*": "./app/components/*"
+    "#components/*": "./app/components/*",
+    "#modifiers/*": "./app/modifiers/*"
   },
   "exports": {
     "./tests/*": "./tests/*",
