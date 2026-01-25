@@ -143,7 +143,9 @@ export default class GameService extends Service {
     // Shuffle the tiles using Fisher-Yates algorithm
     for (let i = allTiles.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
-      [allTiles[i], allTiles[j]] = [allTiles[j]!, allTiles[i]!];
+      const temp = allTiles[i];
+      allTiles[i] = allTiles[j]!;
+      allTiles[j] = temp!;
     }
 
     // Place shuffled tiles back on the board
@@ -151,8 +153,10 @@ export default class GameService extends Service {
     for (let x = 0; x < this.board.length; x++) {
       for (let y = 0; y < this.board[x]!.length; y++) {
         if (this.board[x]![y] && !this.board[x]![y]!.removed) {
-          this.board[x]![y] = allTiles[tileIndex]!;
-          tileIndex++;
+          if (tileIndex < allTiles.length) {
+            this.board[x]![y] = allTiles[tileIndex]!;
+            tileIndex++;
+          }
         }
       }
     }
