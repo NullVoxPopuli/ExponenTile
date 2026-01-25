@@ -434,9 +434,8 @@ export default class GameService extends Service {
       this.moveDurationMs = originalMoveDurationMs;
       this.animationSpeedMultiplier = originalAnimationSpeedMultiplier;
 
-      // Wait for the browser to render the final game over state
-      // before completing the function
-      await sleep(50);
+      // Ensure the game over modal is shown
+      this.gameOverClosed = false;
     }
   }
 
