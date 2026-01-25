@@ -172,7 +172,7 @@ export default class GameComponent extends Component {
           </div>
 
           {{#if this.showRandomizeCount}}
-            <div class="hud-row">
+            <div class="hud-row" style="margin-top: 10px;">
               <div class="hud-info">
                 Randomizations used: {{this.game.randomizeCount}}
               </div>
