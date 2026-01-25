@@ -16,8 +16,8 @@ import {
   positionToNumber,
   setTile,
   swapTile,
-  tileAt,
   type Tile,
+  tileAt,
   uniqueNewMatches,
 } from '../game/board';
 import { boardContains2048Tile } from '../utils/sharing';
@@ -137,6 +137,7 @@ export default class GameService extends Service {
 
     // Collect all tiles from the board
     const allTiles: Tile[] = [];
+
     for (let x = 0; x < this.board.length; x++) {
       for (let y = 0; y < this.board[x]!.length; y++) {
         const tile = this.board[x]![y];
@@ -151,6 +152,7 @@ export default class GameService extends Service {
     for (let i = allTiles.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       const temp = allTiles[i];
+
       allTiles[i] = allTiles[j]!;
       allTiles[j] = temp!;
     }
@@ -160,6 +162,7 @@ export default class GameService extends Service {
 
     // Place shuffled tiles back on the new board
     let tileIndex = 0;
+
     for (let x = 0; x < shuffledBoard.length; x++) {
       for (let y = 0; y < shuffledBoard[x]!.length; y++) {
         if (shuffledBoard[x]![y] && !shuffledBoard[x]![y]!.removed) {
@@ -373,6 +376,24 @@ export default class GameService extends Service {
   private clearHint(): void {
     this.hintToken++;
     this.hintTileIds = [];
+  }
+
+  @action
+  autoSwap(): void {
+    if (this.animating || this.gameOver) {
+      return;
+    }
+
+    const positions = getPositionsThatAlmostMatch(this.board);
+
+    if (!positions) {
+      return;
+    }
+
+    const [a, b] = positions;
+
+    this.clearHint();
+    void this.swapTiles(a, b);
   }
 
   async swapTiles(a: Position, b: Position): Promise<void> {
