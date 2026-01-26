@@ -13,7 +13,7 @@
 
   /* Dynamic scaling based on viewport */
   --tile-gap: clamp(3px, 1.2vmin, 12px);
-  --tile-size: calc((min(100vw - 2px, 75vh) - 14px - 7 * var(--tile-gap)) / 8);
+  --tile-size: calc((min(100vw - 2px, 60vh) - 14px - 7 * var(--tile-gap)) / 8);
   --board-size: 8;
   --board-step: calc(var(--tile-size) + var(--tile-gap));
   --board-px: calc(var(--board-size) * var(--board-step) - var(--tile-gap));
@@ -38,6 +38,14 @@ body {
     Arial,
     'Apple Color Emoji',
     'Segoe UI Emoji';
+}
+
+@media (min-width: 800px) {
+  body {
+    padding: 1rem;
+    width: calc(100vw - 2rem);
+    height: calc(100vh - 2rem);
+  }
 }
 
 main {
@@ -70,7 +78,7 @@ main {
 .hud {
   box-sizing: border-box;
   width: calc(100% - 2px);
-  max-width: min(100%, 75vh);
+  max-width: min(100%, 60vh);
   padding: 0;
   background: transparent;
   border: 0;
@@ -103,12 +111,12 @@ main {
 }
 
 .hud-label {
-  font-size: clamp(9px, 2vw, 11px);
+  font-size: clamp(11px, 2.5vmin, 16px);
   opacity: 0.85;
 }
 
 .hud-value {
-  font-size: clamp(12px, 3vw, 16px);
+  font-size: clamp(16px, 4vmin, 28px);
   font-weight: 700;
   line-height: 1.1;
 }
@@ -133,7 +141,7 @@ main {
   border: 1px solid rgb(248 113 113 / 55%);
   background: rgb(248 113 113 / 14%);
   color: #fecaca;
-  font-size: 12px;
+  font-size: clamp(12px, 2.5vmin, 18px);
   font-weight: 700;
 }
 
@@ -152,7 +160,7 @@ main {
   position: relative;
   box-sizing: border-box;
   width: calc(100% - 2px);
-  max-width: min(100%, 75vh);
+  max-width: min(100%, 60vh);
   aspect-ratio: 1;
   padding: 7px;
   background: var(--panel);
@@ -226,7 +234,7 @@ main {
   font-weight: 800;
   user-select: none;
   cursor: pointer;
-  font-size: 18px;
+  font-size: clamp(20px, 75%, 72px);
   outline: 0 solid rgb(255 255 255 / 0%);
   outline-offset: 0;
   transition:
@@ -388,6 +396,7 @@ main {
   padding: 8px 12px;
   border-radius: 12px;
   font-weight: 650;
+  font-size: clamp(13px, 2.5vmin, 18px);
   cursor: pointer;
 }
 
