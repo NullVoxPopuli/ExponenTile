@@ -13,7 +13,8 @@
 
   /* Dynamic scaling based on viewport */
   --tile-gap: clamp(3px, 1.2vmin, 12px);
-  --tile-size: calc((min(100vw - 2px, 60vh) - 14px - 7 * var(--tile-gap)) / 8);
+  --board-width: min(100vw, 60vh);
+  --tile-size: calc((var(--board-width) - 16px - 7 * var(--tile-gap)) / 8);
   --board-size: 8;
   --board-step: calc(var(--tile-size) + var(--tile-gap));
   --board-px: calc(var(--board-size) * var(--board-step) - var(--tile-gap));
@@ -40,7 +41,12 @@ body {
     'Segoe UI Emoji';
 }
 
-@media (min-width: 800px) {
+@media (width >= 800px) {
+  :root {
+    --board-width: min(100vw - 2rem, 60vh);
+    --tile-size: calc((var(--board-width) - 16px - 7 * var(--tile-gap)) / 8);
+  }
+
   body {
     padding: 1rem;
     width: calc(100vw - 2rem);
@@ -77,8 +83,7 @@ main {
 
 .hud {
   box-sizing: border-box;
-  width: calc(100% - 2px);
-  max-width: min(100%, 60vh);
+  width: var(--board-width);
   padding: 0;
   background: transparent;
   border: 0;
@@ -159,8 +164,7 @@ main {
 .board {
   position: relative;
   box-sizing: border-box;
-  width: calc(100% - 2px);
-  max-width: min(100%, 60vh);
+  width: var(--board-width);
   aspect-ratio: 1;
   padding: 7px;
   background: var(--panel);
