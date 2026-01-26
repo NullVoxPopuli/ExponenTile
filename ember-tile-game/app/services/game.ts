@@ -438,7 +438,7 @@ export default class GameService extends Service {
           }
 
           // Small beat to see the new value
-          const stillActiveAfterUpgrade = await sleepChecked(token, this, 350 * this.animationSpeedMultiplier);
+          const stillActiveAfterUpgrade = await sleepChecked(token, this, 200 * this.animationSpeedMultiplier);
 
           if (!stillActiveAfterUpgrade) {
             return;
@@ -782,7 +782,7 @@ export default class GameService extends Service {
           }
 
           // Small beat to see the new value before gravity starts
-          const stillActiveAfterUpgrade = await sleepChecked(token, this, 350 * this.animationSpeedMultiplier);
+          const stillActiveAfterUpgrade = await sleepChecked(token, this, 200 * this.animationSpeedMultiplier);
 
           if (!stillActiveAfterUpgrade) {
             this.mergePhase = 'none';
