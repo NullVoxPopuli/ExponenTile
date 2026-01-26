@@ -238,7 +238,7 @@ main {
   font-weight: 800;
   user-select: none;
   cursor: pointer;
-  font-size: clamp(20px, 180%, 72px);
+  font-size: clamp(20px, 100%, 72px);
   outline: 0 solid rgb(255 255 255 / 0%);
   outline-offset: 0;
   transition:
