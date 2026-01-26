@@ -735,7 +735,7 @@ export default class GameService extends Service {
           // Start of merge: highlight the group
           this.mergePhase = 'highlight';
 
-          const stepDelayMs = getStepDelayMs(this.moveDurationMs);
+          const stepDelayMs = getStepDelayMs(this.moveDurationMs, 60);
 
           // Give humans time to see the match before it collapses.
           const stillActiveAfterHighlight = await sleepChecked(
@@ -1104,7 +1104,7 @@ function boardHasRemovedTiles(board: Board): boolean {
 
 function getStepDelayMs(durationMs: number, extraDelayMs = 0): number {
   // Small cushion so transforms can finish (but keep things fast).
-  return Math.max(60, durationMs) + Math.max(0, extraDelayMs) + 40;
+  return Math.max(60, durationMs) + Math.max(0, extraDelayMs);
 }
 
 function getGravityDurationMs(baseDurationMs: number, maxDistanceSteps: number): number {
