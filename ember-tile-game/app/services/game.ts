@@ -397,7 +397,7 @@ export default class GameService extends Service {
           const stillActiveAfterHighlight = await sleepChecked(
             token,
             this,
-            Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6))) * this.animationSpeedMultiplier
+            Math.max(100, Math.min(160, Math.round(stepDelayMs * 0.4))) * this.animationSpeedMultiplier
           );
 
           if (!stillActiveAfterHighlight) {
@@ -412,7 +412,7 @@ export default class GameService extends Service {
           const stillActiveAfterCollapse = await sleepChecked(
             token,
             this,
-            Math.max(100, stepDelayMs * 0.2) * this.animationSpeedMultiplier
+            Math.max(80, stepDelayMs * 0.15) * this.animationSpeedMultiplier
           );
 
           if (!stillActiveAfterCollapse) {
@@ -741,7 +741,7 @@ export default class GameService extends Service {
           const stillActiveAfterHighlight = await sleepChecked(
             token,
             this,
-            Math.max(180, Math.min(320, Math.round(stepDelayMs * 0.6))) * this.animationSpeedMultiplier
+            Math.max(100, Math.min(160, Math.round(stepDelayMs * 0.4))) * this.animationSpeedMultiplier
           );
 
           if (!stillActiveAfterHighlight) {
@@ -756,7 +756,7 @@ export default class GameService extends Service {
           const stillActiveAfterCollapse = await sleepChecked(
             token,
             this,
-            Math.max(160, Math.min(320, Math.round(stepDelayMs * 0.55))) * this.animationSpeedMultiplier
+            Math.max(80, Math.min(140, Math.round(stepDelayMs * 0.35))) * this.animationSpeedMultiplier
           );
 
           if (!stillActiveAfterCollapse) {

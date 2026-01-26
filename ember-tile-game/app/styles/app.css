@@ -238,7 +238,7 @@ main {
   font-weight: 800;
   user-select: none;
   cursor: pointer;
-  font-size: clamp(20px, 75%, 72px);
+  font-size: clamp(20px, 180%, 72px);
   outline: 0 solid rgb(255 255 255 / 0%);
   outline-offset: 0;
   transition:
@@ -300,8 +300,50 @@ main {
   }
 }
 
+@keyframes tile-vibrate {
+  0%, 100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+
+  10% {
+    transform: translate(-2px, -1px) rotate(-1deg);
+  }
+
+  20% {
+    transform: translate(2px, 1px) rotate(1deg);
+  }
+
+  30% {
+    transform: translate(-2px, 1px) rotate(-0.5deg);
+  }
+
+  40% {
+    transform: translate(2px, -1px) rotate(0.5deg);
+  }
+
+  50% {
+    transform: translate(-1px, -1px) rotate(-0.5deg);
+  }
+
+  60% {
+    transform: translate(1px, 1px) rotate(0.5deg);
+  }
+
+  70% {
+    transform: translate(-1px, 0) rotate(-0.25deg);
+  }
+
+  80% {
+    transform: translate(1px, 0) rotate(0.25deg);
+  }
+
+  90% {
+    transform: translate(-0.5px, 0) rotate(0deg);
+  }
+}
+
 .tile-bump {
-  animation: tile-merge var(--merge-bump-duration, 140ms) ease-out;
+  animation: tile-vibrate 280ms ease-in-out;
 }
 
 .tile-removed {
