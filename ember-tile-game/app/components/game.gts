@@ -141,6 +141,7 @@ export default class GameComponent extends Component {
               @position={{cell.position}}
               @selected={{cell.selected}}
               @durationMs={{this.animationDurationMs}}
+              @spawnRowsByTileId={{this.game.spawnRowsByTileId}}
             />
           {{/each}}
         </div>

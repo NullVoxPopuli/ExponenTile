@@ -2,51 +2,20 @@
 
 :root {
   color-scheme: light dark;
-
+  
   --bg: #0f172a;
   --fg: #e5e7eb;
   --panel: rgb(255 255 255 / 6%);
   --panel-strong: rgb(255 255 255 / 10%);
   --border: rgb(255 255 255 / 16%);
   --shadow: 0 10px 30px rgb(0 0 0 / 45%);
-  --radius: 14px;
-  --gap: 10px;
-  --tile-size: 66px;
-  --tile-gap: 10px;
-}
-
-@media (width >= 900px) {
-  :root {
-    --tile-size: 74px;
-    --tile-gap: 10px;
-  }
-}
-
-@media (width <= 640px) {
-  :root {
-    --tile-size: 48px;
-    --tile-gap: 6px;
-  }
-}
-
-@media (width <= 480px) {
-  :root {
-    --tile-size: 40px;
-    --tile-gap: 5px;
-  }
-}
-
-@media (width <= 380px) {
-  :root {
-    --tile-size: 34px;
-    --tile-gap: 4px;
-  }
-}
-
-html {
-  height: 100vh;
-  overflow: hidden;
-  background: radial-gradient(1200px 800px at 20% 10%, #1f2937, var(--bg));
+  --radius: 12px;
+  --tile-size: 64px;
+  --tile-gap: 8px;
+  --board-size: 8;
+  --board-step: calc(var(--tile-size) + var(--tile-gap));
+  --board-px: calc(var(--board-size) * var(--board-step) - var(--tile-gap));
+  --tile-motion-scale: 1;
 }
 
 body {
@@ -54,6 +23,7 @@ body {
   margin: 0;
   overflow: hidden;
   color: var(--fg);
+  background: var(--bg);
   font-family:
     ui-sans-serif,
     system-ui,
@@ -64,39 +34,6 @@ body {
     Arial,
     'Apple Color Emoji',
     'Segoe UI Emoji';
-}
-
-/* Ensure every element uses the same sans-serif font stack (some browsers do
- * not inherit fonts for buttons/inputs by default). */
-*,
-*::before,
-*::after {
-  font-family: inherit;
-}
-
-button,
-input,
-select,
-textarea {
-  font: inherit;
-}
-
-code,
-pre {
-  font-family: inherit;
-}
-
-a {
-  color: inherit;
-}
-
-.page {
-  padding: 16px;
-}
-
-.page-center {
-  display: grid;
-  place-items: center;
 }
 
 .app-shell {
@@ -198,6 +135,7 @@ a {
   touch-action: none;
 }
 
+
 .tile-wrap {
   position: absolute;
   top: 14px;
@@ -217,17 +155,16 @@ a {
     translate3d(var(--merge-x-px, 0), var(--merge-y-px, 0), 0)
     translate3d(var(--preview-x, 0), var(--preview-y, 0), 0)
     translate3d(var(--drag-x, 0), var(--drag-y, 0), 0)
-    translate3d(0, var(--spawn-offset), 0)
+    translate3d(0, var(--spawn-offset, 0), 0)
     scale(var(--tile-motion-scale, 1));
-  transition:
-    transform var(--move-duration, 120ms)
+    transition: transform var(--move-duration, 120ms)
       var(--move-ease, cubic-bezier(0.4, 0, 0.2, 1))
       var(--move-delay, 0ms);
 }
 
 /* Keep falling tiles snappy like everything else. */
 .tile-wrap-falling {
-  --move-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --move-ease: cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --tile-motion-scale: 1;
 }
 
@@ -241,6 +178,15 @@ a {
 
 .tile-wrap-merging {
   z-index: 4;
+}
+
+.tile-wrap-spawning {
+  z-index: 3;
+}
+
+.tile-wrap-hidden {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .tile {

@@ -21,6 +21,7 @@ type Args = {
   position: Position;
   selected: boolean;
   durationMs?: number;
+  spawnRowsByTileId?: Record<number, number>;
 };
 
 export default class TileComponent extends Component<Args> {
@@ -83,18 +84,20 @@ export default class TileComponent extends Component<Args> {
       const maxDistance = maxDistanceFromMap(this.game.moveDistanceByTileId);
       const distance = this.game.moveDistanceByTileId[this.args.tile.id] ?? 0;
 
-      if (maxDistance > 0) {
-        // Use the service-selected gravity duration as the upper bound
-        // (so step timing is long enough), but make smaller drops quicker.
-        // Keep a relatively high floor so gravity is readable.
-        const min = Math.max(300, Math.round(baseDuration * 0.6));
+      if (maxDistance > 0 && distance > 0) {
+        // Longer falls should have longer durations so they're readable.
+        // Use baseDuration (from service) as the max duration for longest falls.
+        // Use a floor of 300ms minimum so even short falls are visible.
+        const min = 300;
+        const max = Math.max(min, baseDuration);
         const distanceFactor = Math.min(1, distance / maxDistance);
 
-        duration = Math.round(min + (baseDuration - min) * distanceFactor);
+        duration = Math.round(min + (max - min) * distanceFactor);
       }
     }
 
-    return `--pos-x:${this.args.position.x};--pos-y:${this.args.position.y};--spawn-from-y:${spawnFromY};--merge-x:${mergeX};--merge-y:${mergeY};--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-duration:${duration}ms;--move-delay:${delay}ms;`;
+    return `--pos-x:${this.args.position.x};--pos-y:${this.args.position.y};--spawn-from-y:${spawnFromY};--merge-x:${mergeX};--merge-y:${mergeY};--preview-x:${previewX}px;--preview-y:${previewY}px;--drag-x:${x}px;--drag-y:${y}px;--move-ease:${this.game.moveEasing};--move-duration:${duration}ms;--move-delay:${delay}ms;`;
+
   }
 
   get wrapperClass(): string {
@@ -109,7 +112,29 @@ export default class TileComponent extends Component<Args> {
     const distance = this.game.moveDistanceByTileId[this.args.tile.id] ?? 0;
     const falling = !this.isDragging && distance > 1 ? ' tile-wrap-falling' : '';
 
-    return `tile-wrap${dragging}${merging}${falling}`;
+    // Spawning tiles are placed on top
+    const spawnRows = this.game.spawnRowsByTileId[this.args.tile.id] ?? 0;
+    const spawning = spawnRows > 0 ? ' tile-wrap-spawning' : '';
+
+    // Check if this tile is being replaced by a spawning tile at the same position
+    // If it is, hide it so the spawning animation looks clean
+    let hidden = '';
+    if (spawnRows === 0 && this.args.spawnRowsByTileId) {
+      // Check if any OTHER tile is spawning at this position
+      for (const [idString, rows] of Object.entries(this.args.spawnRowsByTileId)) {
+        if (rows > 0) {
+          const otherId = Number(idString);
+          const otherTile = this.game.board[this.args.position.x]?.[this.args.position.y];
+          // If there's a spawning tile at this position and it's not us, hide
+          if (otherTile?.id === otherId && otherTile.id !== this.args.tile.id) {
+            hidden = ' tile-wrap-hidden';
+            break;
+          }
+        }
+      }
+    }
+
+    return `tile-wrap${dragging}${merging}${falling}${spawning}${hidden}`;
   }
 
   get classes(): string {

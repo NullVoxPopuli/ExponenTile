@@ -48,6 +48,7 @@ export default class GameService extends Service {
   @tracked spawnRowsByTileId: Record<number, number> = {};
   @tracked moveDelayByTileId: Record<number, number> = {};
   @tracked maxMoveDelayMs = 0;
+  @tracked spawnPositions: Set<number> = new Set(); // positions with spawning tiles
 
   readonly size = 8;
 
@@ -329,23 +330,43 @@ export default class GameService extends Service {
           ? getMovementInfo(boardForMovementCalc, step.board)
           : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
 
-        const gravityDelayInfo = getMoveDelayInfo(gravityMovement.moveDistanceByTileId);
-
+        // For gravity, all tiles start falling at the same time (no stagger)
         this.moveDistanceByTileId = gravityMovement.moveDistanceByTileId;
         this.spawnRowsByTileId = gravityMovement.spawnRowsByTileId;
-        this.moveDelayByTileId = gravityDelayInfo.delayByTileId;
-        this.maxMoveDelayMs = gravityDelayInfo.maxDelayMs;
-        this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
+        this.moveDelayByTileId = {};
+        this.maxMoveDelayMs = 0;
+        this.moveEasing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
         this.moveDurationMs = getGravityDurationMs(
           this.animationDurationMs,
           gravityMovement.maxDistanceSteps
         );
+        // Give the browser a frame to commit the new
+        // duration/easing variables before positions change,
+        // so the transform transition will animate instead of snapping.
+        await sleep(0);
 
         // NOW set the board to trigger the gravity animation
         this.board = step.board;
         this.points = this.points + step.points;
 
         boardForMovementCalc = step.board;
+      } else if (!isValueUpgrade && movementInfo.maxDistanceSteps > 0) {
+        // This is gravity from a previous merge, use ease-in
+        // All gravity tiles start at the same time (no stagger)
+        this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
+        this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
+        this.moveDelayByTileId = {};
+        this.maxMoveDelayMs = 0;
+        this.moveEasing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        this.moveDurationMs = getGravityDurationMs(
+          this.animationDurationMs,
+          movementInfo.maxDistanceSteps
+        );
+        // Commit transition vars first, then positions next tick.
+        await sleep(0);
+
+        this.board = step.board;
+        this.points = this.points + step.points;
       } else {
         this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
         this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
@@ -406,12 +427,33 @@ export default class GameService extends Service {
           // Value has been upgraded, end the merge phase
           this.mergePhase = 'none';
 
+          // Pre-calculate gravity movement for the next step so merged tile isn't static
+          // We'll apply it after the upgrade visibility delay
+          let nextGravityMovement = { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+
+          const nextStep = boards[index + 1];
+
+          if (nextStep && boardForMovementCalc) {
+            nextGravityMovement = getMovementInfo(boardForMovementCalc, nextStep.board);
+          }
+
           // Small beat to see the new value
           const stillActiveAfterUpgrade = await sleepChecked(token, this, 350 * this.animationSpeedMultiplier);
 
           if (!stillActiveAfterUpgrade) {
             return;
           }
+
+          // Now apply all gravity properties so merged tile starts animating immediately
+          this.moveDistanceByTileId = nextGravityMovement.moveDistanceByTileId;
+          this.spawnRowsByTileId = nextGravityMovement.spawnRowsByTileId;
+          this.moveDelayByTileId = {};
+          this.maxMoveDelayMs = 0;
+          this.moveEasing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          this.moveDurationMs = getGravityDurationMs(
+            this.animationDurationMs,
+            nextGravityMovement.maxDistanceSteps
+          );
 
           // Don't update boardForMovementCalc - we want the next step (gravity)
           // to calculate movement from the previous board (with removed tiles), not this one
@@ -638,13 +680,12 @@ export default class GameService extends Service {
           ? getMovementInfo(boardForMovementCalc, step.board)
           : { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
 
-        const gravityDelayInfo = getMoveDelayInfo(gravityMovement.moveDistanceByTileId);
-
+        // For gravity, all tiles start falling at the same time (no stagger)
         this.moveDistanceByTileId = gravityMovement.moveDistanceByTileId;
         this.spawnRowsByTileId = gravityMovement.spawnRowsByTileId;
-        this.moveDelayByTileId = gravityDelayInfo.delayByTileId;
-        this.maxMoveDelayMs = gravityDelayInfo.maxDelayMs;
-        this.moveEasing = 'cubic-bezier(0.4, 0, 0.2, 1)';
+        this.moveDelayByTileId = {};
+        this.maxMoveDelayMs = 0;
+        this.moveEasing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
         this.moveDurationMs = getGravityDurationMs(
           this.animationDurationMs,
           gravityMovement.maxDistanceSteps
@@ -655,6 +696,21 @@ export default class GameService extends Service {
         this.points = this.points + step.points;
 
         boardForMovementCalc = step.board;
+      } else if (!isValueUpgrade && movementInfo.maxDistanceSteps > 0) {
+        // This is gravity from a previous merge, use ease-in
+        // All gravity tiles start at the same time (no stagger)
+        this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
+        this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
+        this.moveDelayByTileId = {};
+        this.maxMoveDelayMs = 0;
+        this.moveEasing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+        this.moveDurationMs = getGravityDurationMs(
+          this.animationDurationMs,
+          movementInfo.maxDistanceSteps
+        );
+
+        this.board = step.board;
+        this.points = this.points + step.points;
       } else {
         this.moveDistanceByTileId = movementInfo.moveDistanceByTileId;
         this.spawnRowsByTileId = movementInfo.spawnRowsByTileId;
@@ -715,6 +771,16 @@ export default class GameService extends Service {
           // Value has been upgraded, end the merge phase
           this.mergePhase = 'none';
 
+          // Pre-calculate gravity movement for the next step so merged tile isn't static
+          // We'll apply it after the upgrade visibility delay
+          let nextGravityMovement = { maxDistanceSteps: 0, moveDistanceByTileId: {}, spawnRowsByTileId: {} };
+
+          const nextStep = boards[index + 1];
+
+          if (nextStep && boardForMovementCalc) {
+            nextGravityMovement = getMovementInfo(boardForMovementCalc, nextStep.board);
+          }
+
           // Small beat to see the new value before gravity starts
           const stillActiveAfterUpgrade = await sleepChecked(token, this, 350 * this.animationSpeedMultiplier);
 
@@ -723,6 +789,17 @@ export default class GameService extends Service {
 
             return;
           }
+
+          // Now apply all gravity properties so merged tile starts animating immediately
+          this.moveDistanceByTileId = nextGravityMovement.moveDistanceByTileId;
+          this.spawnRowsByTileId = nextGravityMovement.spawnRowsByTileId;
+          this.moveDelayByTileId = {};
+          this.maxMoveDelayMs = 0;
+          this.moveEasing = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+          this.moveDurationMs = getGravityDurationMs(
+            this.animationDurationMs,
+            nextGravityMovement.maxDistanceSteps
+          );
 
           // Don't update boardForMovementCalc - we want the next step (gravity)
           // to calculate movement from the previous board (with removed tiles), not this one
@@ -818,6 +895,33 @@ export default class GameService extends Service {
     this.mergeTargetsCache.set(board, targets);
 
     return targets;
+  }
+
+  private updateSpawnPositions(): void {
+    const positions = new Set<number>();
+
+    for (const [idString, spawnRows] of Object.entries(this.spawnRowsByTileId)) {
+      if (spawnRows > 0) {
+        // Find this tile's position in the current board
+        for (let x = 0; x < this.board.length; x++) {
+          const column = this.board[x];
+
+          if (!column) {
+            continue;
+          }
+
+          for (let y = 0; y < column.length; y++) {
+            const tile = column[y];
+
+            if (tile?.id === Number(idString)) {
+              positions.add(positionToNumber({ x, y }, this.board));
+            }
+          }
+        }
+      }
+    }
+
+    this.spawnPositions = positions;
   }
 
   clickTile(position: Position): void {
