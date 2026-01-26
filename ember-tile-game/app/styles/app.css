@@ -2,7 +2,7 @@
 
 :root {
   color-scheme: light dark;
-  
+
   --bg: #0f172a;
   --fg: #e5e7eb;
   --panel: rgb(255 255 255 / 6%);
@@ -10,8 +10,10 @@
   --border: rgb(255 255 255 / 16%);
   --shadow: 0 10px 30px rgb(0 0 0 / 45%);
   --radius: 12px;
-  --tile-size: 64px;
-  --tile-gap: 8px;
+
+  /* Dynamic scaling based on viewport */
+  --tile-gap: clamp(3px, 1.2vmin, 12px);
+  --tile-size: calc((min(100vw - 2px, 75vh) - 14px - 7 * var(--tile-gap)) / 8);
   --board-size: 8;
   --board-step: calc(var(--tile-size) + var(--tile-gap));
   --board-px: calc(var(--board-size) * var(--board-step) - var(--tile-gap));
@@ -19,6 +21,8 @@
 }
 
 body {
+  display: flex;
+  width: 100vw;
   height: 100vh;
   margin: 0;
   overflow: hidden;
@@ -36,17 +40,28 @@ body {
     'Segoe UI Emoji';
 }
 
-.app-shell {
-  display: grid;
-  justify-items: center;
+main {
+  width: 100%;
 }
 
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;}
+
 .game-shell {
-  width: fit-content;
-  max-width: 100%;
-  display: grid;
-  gap: 14px;
-  justify-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  height: 100%;
+  gap: clamp(8px, 2vw, 16px);
+  padding: 0;
+  overflow: auto;
 
   --board-step: calc(var(--tile-size) + var(--tile-gap));
   --board-px: calc(var(--board-size) * var(--board-step) - var(--tile-gap));
@@ -54,9 +69,9 @@ body {
 
 .hud {
   box-sizing: border-box;
-  width: calc(var(--board-px) + 28px + 2px);
-  max-width: 100%;
-  padding: 12px;
+  width: calc(100% - 2px);
+  max-width: min(100%, 75vh);
+  padding: 0;
   background: transparent;
   border: 0;
   border-radius: 0;
@@ -65,44 +80,46 @@ body {
 
 .hud-row {
   display: flex;
-  gap: 12px;
+  gap: clamp(8px, 2vw, 12px);
   align-items: flex-start;
   justify-content: space-between;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
 }
 
 .hud-scores {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: clamp(6px, 1.5vw, 8px);
+  flex: 1;
 }
 
 .hud-score {
-  padding: 6px 8px;
+  padding: clamp(4px, 1vw, 6px) clamp(6px, 1.5vw, 8px);
   border-radius: 12px;
-  min-width: 96px;
+  min-width: unset;
   background: transparent;
   border: 0;
   box-shadow: none;
 }
 
 .hud-label {
-  font-size: 11px;
+  font-size: clamp(9px, 2vw, 11px);
   opacity: 0.85;
 }
 
 .hud-value {
-  font-size: 16px;
+  font-size: clamp(12px, 3vw, 16px);
   font-weight: 700;
   line-height: 1.1;
 }
 
 .hud-actions {
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  flex-flow: column wrap;
+  gap: clamp(8px, 1.5vw, 10px);
   align-items: flex-end;
   margin-left: auto;
+  justify-content: flex-end;
 }
 
 /* Additional spacing for subsequent HUD rows */
@@ -134,21 +151,23 @@ body {
 .board {
   position: relative;
   box-sizing: border-box;
-  width: calc(var(--board-px) + 28px + 2px);
-  height: calc(var(--board-px) + 28px + 2px);
-  padding: 14px;
+  width: calc(100% - 2px);
+  max-width: min(100%, 75vh);
+  aspect-ratio: 1;
+  padding: 7px;
   background: var(--panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
   touch-action: none;
+  flex-shrink: 0;
 }
 
 
 .tile-wrap {
   position: absolute;
-  top: 14px;
-  left: 14px;
+  top: 7px;
+  left: 7px;
   width: var(--tile-size);
   height: var(--tile-size);
 

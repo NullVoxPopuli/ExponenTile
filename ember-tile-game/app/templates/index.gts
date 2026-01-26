@@ -1,7 +1,7 @@
 import Game from '#components/game';
 
 <template>
-  <main class="page">
+  <main>
     <Game />
   </main>
 </template>

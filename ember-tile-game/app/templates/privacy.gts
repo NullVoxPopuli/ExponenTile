@@ -1,5 +1,5 @@
 <template>
-  <main class="page">
+  <main>
     <div class="privacy">
       <h1>Privacy policy</h1>
       <p>We respect your privacy and do not collect any of your data.</p>
