@@ -135,8 +135,9 @@ export default class GameService extends Service {
 
   @action
   async randomizeTiles(): Promise<void> {
-    // Halve the points (rounded down)
-    this.points = Math.floor(this.points / 2);
+    // Apply a 25% point penalty (rounded down)
+    const penalty = Math.floor(this.points / 4);
+    this.points = Math.max(0, this.points - penalty);
 
     // Collect all tiles from the board
     const allTiles: Tile[] = [];

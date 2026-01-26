@@ -97,7 +97,7 @@ export default class GameComponent extends Component {
   }
 
   get randomizeCost(): number {
-    return Math.floor(this.game.points / 2);
+    return Math.floor(this.game.points / 4);
   }
 
   get showRandomizeCount(): boolean {
@@ -161,6 +161,12 @@ export default class GameComponent extends Component {
                 <div class="hud-label">Moves</div>
                 <div class="hud-value">{{this.game.moves}}</div>
               </div>
+              {{#if this.showRandomizeCount}}
+                <div class="hud-score">
+                  <div class="hud-label">Randomizations Used</div>
+                  <div class="hud-value">{{this.game.randomizeCount}}</div>
+                </div>
+              {{/if}}
             </div>
 
             <div class="hud-actions">
@@ -186,16 +192,21 @@ export default class GameComponent extends Component {
               >
                 New Game
               </button>
+
+              {{#if this.showRandomizeCount}}
+                <button
+                  type="button"
+                  class="btn"
+                  {{on "click" this.game.randomizeTiles}}
+                  disabled={{this.game.animating}}
+                >
+                  Randomize (-{{this.randomizeCost}} points)
+                </button>
+              {{/if}}
             </div>
           </div>
 
-          {{#if this.showRandomizeCount}}
-            <div class="hud-row" style="margin-top: 10px;">
-              <div class="hud-info">
-                Randomizations used: {{this.game.randomizeCount}}
-              </div>
-            </div>
-          {{/if}}
+
         </div>
 
         {{#if this.game.showGameOver}}

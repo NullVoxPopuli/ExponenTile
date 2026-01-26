@@ -57,32 +57,33 @@ body {
   width: calc(var(--board-px) + 28px + 2px);
   max-width: 100%;
   padding: 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
 .hud-row {
   display: flex;
   gap: 12px;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .hud-scores {
   display: flex;
+  flex-direction: column;
   gap: 8px;
-  flex-wrap: wrap;
 }
 
 .hud-score {
   padding: 6px 8px;
   border-radius: 12px;
-  background: var(--panel-strong);
-  border: 1px solid var(--border);
   min-width: 96px;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .hud-label {
@@ -98,8 +99,15 @@ body {
 
 .hud-actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
-  align-items: center;
+  align-items: flex-end;
+  margin-left: auto;
+}
+
+/* Additional spacing for subsequent HUD rows */
+.hud-row-spaced {
+  margin-top: 10px;
 }
 
 .hud-status {
@@ -115,11 +123,12 @@ body {
 .hud-info {
   padding: 8px 12px;
   border-radius: 12px;
-  background: var(--panel-strong);
+  background: var(--panel);
   border: 1px solid var(--border);
   font-size: 13px;
   font-weight: 600;
   text-align: center;
+  box-shadow: var(--shadow);
 }
 
 .board {
