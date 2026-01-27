@@ -127,6 +127,12 @@ export default class GameComponent extends Component {
       event.preventDefault();
       void this.game.autoPlayToGameOver();
     }
+
+    // Secret hotkey: Ctrl+X to auto-play then randomize on game over
+    if (event instanceof KeyboardEvent && event.ctrlKey && event.key === 'x') {
+      event.preventDefault();
+      void this.game.autoPlayAndRandomizeOnGameOver();
+    }
   }
 
   <template>

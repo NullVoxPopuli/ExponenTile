@@ -242,10 +242,10 @@ main {
   outline: 0 solid rgb(255 255 255 / 0%);
   outline-offset: 0;
   transition:
-    transform 120ms ease,
-    opacity 140ms ease,
-    box-shadow 200ms ease,
-    filter 180ms ease;
+    transform var(--move-duration, 120ms) ease,
+    opacity var(--move-duration, 140ms) ease,
+    box-shadow var(--move-duration, 200ms) ease,
+    filter var(--move-duration, 180ms) ease;
   touch-action: none;
 }
 
@@ -271,7 +271,7 @@ main {
 }
 
 .tile-group-highlight {
-  animation: tile-group-pulse var(--group-pulse-duration, 260ms) ease-out;
+  animation: tile-group-pulse var(--move-duration, 260ms) ease-out;
 }
 
 .tile-merge-target {
@@ -343,7 +343,7 @@ main {
 }
 
 .tile-bump {
-  animation: tile-vibrate 280ms ease-in-out;
+  animation: tile-vibrate var(--move-duration, 280ms) ease-in-out;
 }
 
 .tile-removed {
@@ -385,7 +385,7 @@ main {
 }
 
 .tile-invalid {
-  animation: tile-invalid 180ms ease-in-out;
+  animation: tile-invalid var(--move-duration, 180ms) ease-in-out;
 }
 
 @keyframes tile-hint {
@@ -414,7 +414,7 @@ main {
 .tile-hint {
   outline: 3px solid rgb(56 189 248 / 70%);
   outline-offset: 2px;
-  animation: tile-hint 520ms ease-in-out 0ms 3;
+  animation: tile-hint var(--move-duration, 520ms) ease-in-out 0ms 3;
 }
 
 .tile:hover {

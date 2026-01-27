@@ -6,6 +6,12 @@ function prefersReducedMotion(): boolean {
   return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
+function shouldSkipAnimation(element: HTMLElement): boolean {
+  // Check if the element has --move-duration set to 0 (automated mode)
+  const duration = getComputedStyle(element).getPropertyValue('--move-duration');
+  return duration === '0ms' || duration === '0';
+}
+
 export default modifier((element: HTMLElement) => {
   if (spawned.has(element)) {
     return;
@@ -13,7 +19,9 @@ export default modifier((element: HTMLElement) => {
 
   spawned.add(element);
 
-  if (prefersReducedMotion()) {
+  if (prefersReducedMotion() || shouldSkipAnimation(element)) {
+    // Skip animation - just mark as spawned immediately
+    element.dataset.spawned = 'true';
     return;
   }
 

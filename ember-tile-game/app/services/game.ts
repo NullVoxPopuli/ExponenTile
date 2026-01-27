@@ -584,6 +584,65 @@ export default class GameService extends Service {
     }
   }
 
+  @action
+  async autoPlayAndRandomizeOnGameOver(): Promise<void> {
+    // Store the original animation duration
+    const originalMoveDurationMs = this.moveDurationMs;
+    const originalAnimationSpeedMultiplier = this.animationSpeedMultiplier;
+    const originalSkipAnimationDelays = this.skipAnimationDelays;
+
+    // Turn off animations completely for maximum speed
+    this.moveDurationMs = 0;
+    this.animationSpeedMultiplier = 0;
+    this.skipAnimationDelays = true;
+
+    try {
+      // Loop indefinitely: auto-play -> randomize -> repeat
+      while (true) {
+        // Auto-play until game over
+        while (!this.gameOver) {
+          if (this.animating) {
+            await sleep(10);
+            continue;
+          }
+
+          const positions = getPositionsThatAlmostMatch(this.board);
+
+          if (!positions) {
+            break;
+          }
+
+          const [a, b] = positions;
+
+          this.clearHint();
+          await this.swapTiles(a, b);
+
+          // Allow browser to render between moves
+          await new Promise(resolve => requestAnimationFrame(() => resolve(undefined)));
+        }
+
+        if (!this.gameOver) {
+          // No more moves possible and not continuing
+          break;
+        }
+
+        // Wait for any lingering animations from the auto-play loop
+        while (this.animating) {
+          await sleep(10);
+        }
+
+        // Randomize and continue the loop
+        await this.randomizeTiles();
+      }
+    } finally {
+      // Always restore original settings
+      this.moveDurationMs = originalMoveDurationMs;
+      this.animationSpeedMultiplier = originalAnimationSpeedMultiplier;
+      this.skipAnimationDelays = originalSkipAnimationDelays;
+      this.gameOverClosed = false;
+    }
+  }
+
   async swapTiles(a: Position, b: Position): Promise<void> {
     if (this.animating) {
       return;
