@@ -216,6 +216,10 @@ main {
   z-index: 5;
 }
 
+.tile-wrap-oscillating {
+  filter: drop-shadow(0 12px 24px rgb(0 0 0 / 50%));
+}
+
 .tile-wrap-merging {
   z-index: 4;
 }
