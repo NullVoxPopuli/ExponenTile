@@ -13,7 +13,8 @@
 
   /* Dynamic scaling based on viewport */
   --tile-gap: clamp(3px, 1.2vmin, 12px);
-  --board-width: min(100vw, 60vh);
+  --max-board-width: 700px;
+  --board-width: min(100vw, 60vh, var(--max-board-width));
   --tile-size: calc((var(--board-width) - 16px - 7 * var(--tile-gap)) / 8);
   --board-size: 8;
   --board-step: calc(var(--tile-size) + var(--tile-gap));
@@ -43,7 +44,7 @@ body {
 
 @media (width >= 800px) {
   :root {
-    --board-width: min(100vw - 2rem, 60vh);
+    --board-width: min(100vw - 2rem, 60vh, var(--max-board-width));
     --tile-size: calc((var(--board-width) - 16px - 7 * var(--tile-gap)) / 8);
   }
 
