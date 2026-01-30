@@ -135,8 +135,8 @@ export default class GameService extends Service {
 
   @action
   async randomizeTiles(): Promise<void> {
-    // Apply a 25% point penalty (rounded down)
-    const penalty = Math.floor(this.points / 4);
+    // Apply a 5% point penalty (rounded down)
+    const penalty = Math.floor(this.points / 20);
     this.points = Math.max(0, this.points - penalty);
 
     // Collect all tiles from the board
@@ -523,6 +523,27 @@ export default class GameService extends Service {
   private clearHint(): void {
     this.hintToken++;
     this.hintTileIds = [];
+  }
+
+  @action
+  rotateBoardClockwise(): void {
+    // Rotate the board 90 degrees clockwise
+    // For a column-major board[x][y], clockwise rotation transforms:
+    // new[x][y] = old[size - 1 - y][x]
+    const size = this.board.length;
+    const newBoard: Board = [];
+
+    for (let x = 0; x < size; x++) {
+      newBoard[x] = [];
+      for (let y = 0; y < size; y++) {
+        const oldX = size - 1 - y;
+        const oldY = x;
+        newBoard[x]![y] = this.board[oldX]![oldY];
+      }
+    }
+
+    this.board = newBoard;
+    this.clearHint();
   }
 
   @action

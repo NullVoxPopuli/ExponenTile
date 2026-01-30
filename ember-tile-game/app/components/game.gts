@@ -97,7 +97,7 @@ export default class GameComponent extends Component {
   }
 
   get randomizeCost(): number {
-    return Math.floor(this.game.points / 4);
+    return Math.floor(this.game.points / 20);
   }
 
   get showRandomizeCount(): boolean {
@@ -193,6 +193,20 @@ export default class GameComponent extends Component {
 
               <button
                 type="button"
+                class="btn"
+                {{on "click" this.game.rotateBoardClockwise}}
+                disabled={{this.game.animating}}
+              >
+                Rotate
+              </button>
+            </div>
+          </div>
+
+          <div class="hud-row">
+            <div></div>
+            <div class="hud-actions">
+              <button
+                type="button"
                 class={{if this.game.gameOver "btn btn-primary" "btn"}}
                 {{on "click" this.newGame}}
               >
@@ -206,7 +220,7 @@ export default class GameComponent extends Component {
                   {{on "click" this.game.randomizeTiles}}
                   disabled={{this.game.animating}}
                 >
-                  Randomize (-{{this.randomizeCost}} points)
+                  Randomize (5% penalty, -{{this.randomizeCost}} points)
                 </button>
               {{/if}}
             </div>
@@ -243,7 +257,7 @@ export default class GameComponent extends Component {
                   type="button"
                   class="btn"
                   {{on "click" this.game.randomizeTiles}}
-                >Randomize Tiles (-{{this.randomizeCost}} points)</button>
+                >Randomize Tiles (5% penalty, -{{this.randomizeCost}} points)</button>
 
                 <hr class="modal-separator" />
 
