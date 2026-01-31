@@ -38,7 +38,7 @@ export default class GameService extends Service {
    * Matches the previous "medium" feel.
    */
   // Keep gameplay snappy.
-  readonly animationDurationMs = 180;
+  readonly animationDurationMs = 120;
 
   @tracked moveDurationMs = this.animationDurationMs;
   // A more human-readable easing (slower at the start than our previous curve)
