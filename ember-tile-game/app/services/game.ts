@@ -526,24 +526,56 @@ export default class GameService extends Service {
   }
 
   @action
-  rotateBoardClockwise(): void {
-    // Rotate the board 90 degrees clockwise
-    // For a column-major board[x][y], clockwise rotation transforms:
-    // new[x][y] = old[size - 1 - y][x]
+  async rotateBoardClockwise(): Promise<void> {
+    if (this.animating) {
+      return;
+    }
+
+    this.animating = true;
+
+    // Get the board element and add rotating class
+    const boardElement = document.querySelector('.board');
+
+    if (boardElement) {
+      boardElement.classList.add('rotating');
+    }
+
+    // Wait for animation
+    await new Promise((resolve) => {
+      setTimeout(resolve, 620);
+    });
+
+    // Update board data
     const size = this.board.length;
     const newBoard: Board = [];
 
     for (let x = 0; x < size; x++) {
-      newBoard[x] = [];
+      const column: Tile[] = [];
+
       for (let y = 0; y < size; y++) {
-        const oldX = size - 1 - y;
-        const oldY = x;
-        newBoard[x]![y] = this.board[oldX]![oldY];
+        const oldX = y;
+        const oldY = size - 1 - x;
+        const tile = this.board[oldX]?.[oldY];
+
+        if (!tile) {
+          throw new Error(`Board cell out of bounds during rotation: x=${oldX} y=${oldY}`);
+        }
+
+        column[y] = tile;
       }
+
+      newBoard[x] = column;
     }
 
     this.board = newBoard;
+
+    // Remove rotating class
+    if (boardElement) {
+      boardElement.classList.remove('rotating');
+    }
+
     this.clearHint();
+    this.animating = false;
   }
 
   @action
