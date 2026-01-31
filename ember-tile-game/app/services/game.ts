@@ -1127,8 +1127,8 @@ export default class GameService extends Service {
 
       // Only set preview if target is in bounds
       if (this.isInBounds(to)) {
-        // Clamp preview movement to exactly the distance passed in (already clamped to one step)
-        const maxPreview = Math.min(Math.abs(deltaX) * 0.5, stepPx);
+        // Target tile moves 75% of dragged tile distance in opposite direction
+        const maxPreview = Math.min(Math.abs(deltaX) * 0.75, stepPx);
 
         previewX = deltaX > 0 ? -maxPreview : maxPreview;
       } else {
@@ -1142,8 +1142,8 @@ export default class GameService extends Service {
 
       // Only set preview if target is in bounds
       if (this.isInBounds(to)) {
-        // Clamp preview movement to exactly the distance passed in (already clamped to one step)
-        const maxPreview = Math.min(Math.abs(deltaY) * 0.5, stepPx);
+        // Target tile moves 75% of dragged tile distance in opposite direction
+        const maxPreview = Math.min(Math.abs(deltaY) * 0.75, stepPx);
 
         previewY = deltaY > 0 ? -maxPreview : maxPreview;
       } else {
