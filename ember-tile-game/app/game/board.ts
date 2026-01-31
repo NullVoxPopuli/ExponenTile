@@ -655,7 +655,7 @@ export function getStateFromString(s: string): GameState {
   // Preserve the column-major layout: board[x][y]
   const board: Board = Array.from({ length: size }, (_, x) =>
     Array.from({ length: size }, (_, y) => {
-      const index = y * size + x;
+      const index = x * size + y;
 
       return {
         ...getRandomTile(),
