@@ -1115,9 +1115,6 @@ export default class GameService extends Service {
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
-    const factor = 0.75;
-    const max = Math.max(0, stepPx * factor);
-
     let to: Position | undefined;
     let previewX = 0;
     let previewY = 0;
@@ -1127,16 +1124,34 @@ export default class GameService extends Service {
         x: from.x + (deltaX > 0 ? 1 : -1),
         y: from.y,
       };
-      previewX = clamp(-deltaX * factor, -max, max);
+
+      // Only set preview if target is in bounds
+      if (this.isInBounds(to)) {
+        // Clamp preview movement to exactly the distance passed in (already clamped to one step)
+        const maxPreview = Math.min(Math.abs(deltaX) * 0.5, stepPx);
+
+        previewX = deltaX > 0 ? -maxPreview : maxPreview;
+      } else {
+        to = undefined;
+      }
     } else if (absY > 0) {
       to = {
         x: from.x,
         y: from.y + (deltaY > 0 ? 1 : -1),
       };
-      previewY = clamp(-deltaY * factor, -max, max);
+
+      // Only set preview if target is in bounds
+      if (this.isInBounds(to)) {
+        // Clamp preview movement to exactly the distance passed in (already clamped to one step)
+        const maxPreview = Math.min(Math.abs(deltaY) * 0.5, stepPx);
+
+        previewY = deltaY > 0 ? -maxPreview : maxPreview;
+      } else {
+        to = undefined;
+      }
     }
 
-    if (!to || !this.isInBounds(to)) {
+    if (!to) {
       this.clearDragPreview();
 
       return;
@@ -1378,10 +1393,6 @@ async function sleepChecked(
   }
 
   return game.isTokenActive(token);
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
 }
 
 declare module '@ember/service' {

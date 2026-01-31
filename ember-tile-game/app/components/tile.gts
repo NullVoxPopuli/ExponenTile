@@ -112,6 +112,9 @@ export default class TileComponent extends Component<Args> {
 
   get wrapperClass(): string {
     const dragging = this.isDragging ? ' tile-wrap-dragging' : '';
+    const previewTarget = this.game.isPreviewTarget(this.args.position)
+      ? ' tile-wrap-preview-target'
+      : '';
     const oscillating = this.isOscillating ? ' tile-wrap-oscillating' : '';
     const merging =
       this.args.tile.removed && this.game.mergePhase === 'collapse'
@@ -149,7 +152,7 @@ export default class TileComponent extends Component<Args> {
       }
     }
 
-    return `tile-wrap${dragging}${oscillating}${merging}${falling}${spawning}${hidden}`;
+    return `tile-wrap${dragging}${previewTarget}${oscillating}${merging}${falling}${spawning}${hidden}`;
   }
 
   get classes(): string {
@@ -258,15 +261,16 @@ export default class TileComponent extends Component<Args> {
 
     // Only drag in one axis (feels like the original).
     if (Math.abs(deltaX) > Math.abs(deltaY)) {
-      // Allow one tile drag, but respect board boundaries
-      const tilesLeftAvailable = this.args.position.x;
-      const tilesRightAvailable = boardSize - this.args.position.x - 1;
-      const maxLeftDrag = Math.min(tilesLeftAvailable, 1) * step;
-      const maxRightDrag = Math.min(tilesRightAvailable, 1) * step;
+      // Check if horizontal movement is possible
+      const canMoveLeft = this.args.position.x > 0;
+      const canMoveRight = this.args.position.x < boardSize - 1;
+      const maxLeftDrag = canMoveLeft ? step : 0;
+      const maxRightDrag = canMoveRight ? step : 0;
       const clampedDeltaX = Math.max(-maxLeftDrag, Math.min(maxRightDrag, deltaX));
 
-      // Add oscillation when at limit
-      const isAtLimit = Math.abs(clampedDeltaX) >= Math.max(maxLeftDrag, maxRightDrag);
+      // Add oscillation when at limit in the direction being dragged
+      const maxInDirection = deltaX < 0 ? maxLeftDrag : maxRightDrag;
+      const isAtLimit = maxInDirection > 0 && Math.abs(clampedDeltaX) >= maxInDirection;
 
       if (isAtLimit && !this.isOscillating) {
         this.isOscillating = true;
@@ -276,7 +280,7 @@ export default class TileComponent extends Component<Args> {
         this.stopOscillationLoop();
       }
 
-      this.dragX = clampedDeltaX + this.oscillationValue;
+      this.dragX = clampedDeltaX + (maxInDirection > 0 ? this.oscillationValue : 0);
       this.dragY = 0;
 
       this.game.updateDragPreview(this.args.position, clampedDeltaX, 0, step);
@@ -284,15 +288,16 @@ export default class TileComponent extends Component<Args> {
       return;
     }
 
-    // Allow one tile drag, but respect board boundaries
-    const tilesUpAvailable = this.args.position.y;
-    const tilesDownAvailable = boardSize - this.args.position.y - 1;
-    const maxUpDrag = Math.min(tilesUpAvailable, 1) * step;
-    const maxDownDrag = Math.min(tilesDownAvailable, 1) * step;
+    // Check if vertical movement is possible
+    const canMoveUp = this.args.position.y > 0;
+    const canMoveDown = this.args.position.y < boardSize - 1;
+    const maxUpDrag = canMoveUp ? step : 0;
+    const maxDownDrag = canMoveDown ? step : 0;
     const clampedDeltaY = Math.max(-maxUpDrag, Math.min(maxDownDrag, deltaY));
 
-    // Add oscillation when at limit
-    const isAtLimit = Math.abs(clampedDeltaY) >= Math.max(maxUpDrag, maxDownDrag);
+    // Add oscillation when at limit in the direction being dragged
+    const maxInDirection = deltaY < 0 ? maxUpDrag : maxDownDrag;
+    const isAtLimit = maxInDirection > 0 && Math.abs(clampedDeltaY) >= maxInDirection;
 
     if (isAtLimit && !this.isOscillating) {
       this.isOscillating = true;
@@ -303,7 +308,7 @@ export default class TileComponent extends Component<Args> {
     }
 
     this.dragX = 0;
-    this.dragY = clampedDeltaY + this.oscillationValue;
+    this.dragY = clampedDeltaY + (maxInDirection > 0 ? this.oscillationValue : 0);
     this.game.updateDragPreview(this.args.position, 0, clampedDeltaY, step);
   }
 
@@ -470,22 +475,16 @@ function maxDistanceFromMap(distanceByTileId: Record<number, number>): number {
 }
 
 function getTileStepPx(): number {
-  // Prefer the live board step (accounts for responsive clamps) so drag distance
-  // matches the rendered grid exactly. Fallback to tile size + gap.
-  const board = document.querySelector('.board');
-  const boardStyle = getComputedStyle(board ?? document.documentElement);
+  // Get the actual rendered tile size from the first tile's bounding box
+  const firstTile = document.querySelector('.tile-wrap');
 
-  const boardStep = parseFloat(boardStyle.getPropertyValue('--board-step'));
+  if (firstTile) {
+    const rect = firstTile.getBoundingClientRect();
 
-  if (Number.isFinite(boardStep) && boardStep > 0) {
-    return boardStep;
+    if (rect.width > 0) {
+      return rect.width * 1.2;
+    }
   }
 
-  const tileSize = parseFloat(boardStyle.getPropertyValue('--tile-size'));
-  const tileGap = parseFloat(boardStyle.getPropertyValue('--tile-gap'));
-
-  const safeTileSize = Number.isFinite(tileSize) && tileSize > 0 ? tileSize : 56;
-  const safeTileGap = Number.isFinite(tileGap) && tileGap >= 0 ? tileGap : 6;
-
-  return safeTileSize + safeTileGap;
+  throw new Error('Cannot determine tile step size: no rendered tiles found');
 }
